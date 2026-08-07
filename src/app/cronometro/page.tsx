@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Play, Pause, Square, RotateCcw, Loader2, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +81,20 @@ function safeInt(value: string): number | undefined {
 // Page component
 // ---------------------------------------------------------------------------
 export default function CronometroPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full min-h-screen items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    }>
+      <CronometroContent />
+    </Suspense>
+  );
+}
+
+function CronometroContent() {
+  const searchParams = useSearchParams();
+  const querySubjectId = searchParams.get("subjectId");
   // ---------------------------------------------------------------------- //
   // Mode & Pomodoro settings                                                //
   // ---------------------------------------------------------------------- //
@@ -199,6 +214,18 @@ export default function CronometroPage() {
     fetchSubjects();
     return () => { cancelled = true; };
   }, [user]);
+
+  // ---------------------------------------------------------------------- //
+  // Auto-select subject from URL parameters                                 //
+  // ---------------------------------------------------------------------- //
+  useEffect(() => {
+    if (querySubjectId && subjects.length > 0) {
+      const exists = subjects.find((s) => s.id === querySubjectId);
+      if (exists && !selectedSubject) {
+        setSelectedSubject(querySubjectId);
+      }
+    }
+  }, [querySubjectId, subjects, selectedSubject]);
 
   // ---------------------------------------------------------------------- //
   // Load topics from Firestore when selected subject changes                //
