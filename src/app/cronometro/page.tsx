@@ -21,43 +21,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { addStudySession } from "@/services/sessionService";
-import type { StudyCategory } from "@/types";
+import { getSubjects } from "@/services/planService";
+import { getTopicsBySubject } from "@/services/topicService";
+import type { Subject, Topic, StudyCategory } from "@/types";
 
 // ---------------------------------------------------------------------------
-// Constants & mock data
+// Constants
 // ---------------------------------------------------------------------------
-
-const MOCK_SUBJECTS = [
-  { id: "1", title: "Matemática" },
-  { id: "2", title: "Língua Portuguesa" },
-  { id: "3", title: "Geografia" },
-  { id: "4", title: "Direito Constitucional" },
-  { id: "5", title: "Raciocínio Lógico" },
-];
-
-const MOCK_TOPICS: Record<string, { id: string; title: string }[]> = {
-  "1": [
-    { id: "t1", title: "Teoria dos Conjuntos" },
-    { id: "t2", title: "Progressões Aritméticas" },
-    { id: "t3", title: "Geometria Plana" },
-  ],
-  "2": [
-    { id: "t4", title: "Interpretação de Texto" },
-    { id: "t5", title: "Concordância Verbal" },
-  ],
-  "3": [
-    { id: "t6", title: "Geopolítica Brasileira" },
-    { id: "t7", title: "Clima e Biomas" },
-  ],
-  "4": [
-    { id: "t8", title: "Direitos Fundamentais" },
-    { id: "t9", title: "Organização do Estado" },
-  ],
-  "5": [
-    { id: "t10", title: "Lógica Proposicional" },
-    { id: "t11", title: "Sequências e Séries" },
-  ],
-};
 
 const CATEGORIES: StudyCategory[] = [
   "Teoria",
@@ -69,8 +39,14 @@ const CATEGORIES: StudyCategory[] = [
 /** Pomodoro duration options in minutes */
 const POMODORO_DURATIONS = [25, 30, 50] as const;
 
-// Placeholder until authentication is implemented
+/** Placeholder until authentication is implemented */
 const PLACEHOLDER_USER_ID = "user-placeholder-123";
+
+/**
+ * Provisional planId used to fetch subjects.
+ * Will be replaced once user authentication and plan selection are implemented.
+ */
+const PROVISIONAL_PLAN_ID = "plano-padrao-123";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -124,6 +100,14 @@ export default function CronometroPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
 
   // ---------------------------------------------------------------------- //
+  // Firestore data                                                          //
+  // ---------------------------------------------------------------------- //
+  const [subjects, setSubjects]           = useState<Subject[]>([]);
+  const [topics, setTopics]               = useState<Topic[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [loadingTopics, setLoadingTopics]     = useState(false);
+
+  // ---------------------------------------------------------------------- //
   // Session dialog                                                          //
   // ---------------------------------------------------------------------- //
   const [isDialogOpen, setIsDialogOpen]           = useState(false);
@@ -145,9 +129,8 @@ export default function CronometroPage() {
       ? elapsedSeconds
       : Math.max(0, pomodoroTotalSec - elapsedSeconds);
 
-  const availableTopics = MOCK_TOPICS[selectedSubject] ?? [];
   const subjectLabel =
-    MOCK_SUBJECTS.find((s) => s.id === selectedSubject)?.title ??
+    subjects.find((s) => s.id === selectedSubject)?.title ??
     "Não selecionada";
 
   const pomodoroProgress =
@@ -191,6 +174,55 @@ export default function CronometroPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elapsedSeconds, mode, timerState, pomodoroTotalSec]);
+
+  // ---------------------------------------------------------------------- //
+  // Load subjects from Firestore on mount                                   //
+  // ---------------------------------------------------------------------- //
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchSubjects() {
+      try {
+        setLoadingSubjects(true);
+        const data = await getSubjects(PROVISIONAL_PLAN_ID);
+        if (!cancelled) setSubjects(data);
+      } catch (err) {
+        console.error("Erro ao carregar disciplinas:", err);
+      } finally {
+        if (!cancelled) setLoadingSubjects(false);
+      }
+    }
+
+    fetchSubjects();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ---------------------------------------------------------------------- //
+  // Load topics from Firestore when selected subject changes                //
+  // ---------------------------------------------------------------------- //
+  useEffect(() => {
+    if (!selectedSubject) {
+      setTopics([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchTopics() {
+      try {
+        setLoadingTopics(true);
+        const data = await getTopicsBySubject(selectedSubject);
+        if (!cancelled) setTopics(data);
+      } catch (err) {
+        console.error("Erro ao carregar tópicos:", err);
+      } finally {
+        if (!cancelled) setLoadingTopics(false);
+      }
+    }
+
+    fetchTopics();
+    return () => { cancelled = true; };
+  }, [selectedSubject]);
 
   // ---------------------------------------------------------------------- //
   // Control handlers                                                        //
@@ -351,11 +383,21 @@ export default function CronometroPage() {
               <SelectValue placeholder="Selecione a disciplina…" />
             </SelectTrigger>
             <SelectContent>
-              {MOCK_SUBJECTS.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.title}
-                </SelectItem>
-              ))}
+              {loadingSubjects ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                </div>
+              ) : subjects.length === 0 ? (
+                <div className="py-3 text-center text-xs text-slate-400">
+                  Nenhuma disciplina cadastrada no plano.
+                </div>
+              ) : (
+                subjects.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.title}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
 
@@ -380,23 +422,37 @@ export default function CronometroPage() {
         <Select
           value={selectedTopic}
           onValueChange={(v) => { if (v) setSelectedTopic(v); }}
-          disabled={availableTopics.length === 0}
+          disabled={!selectedSubject || loadingTopics}
         >
           <SelectTrigger id="select-topico" className="w-full bg-white">
             <SelectValue
               placeholder={
-                availableTopics.length === 0
+                !selectedSubject
                   ? "Selecione uma disciplina primeiro…"
+                  : loadingTopics
+                  ? "Carregando tópicos…"
                   : "Selecione o tópico (opcional)…"
               }
             />
           </SelectTrigger>
           <SelectContent>
-            {availableTopics.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.title}
-              </SelectItem>
-            ))}
+            {loadingTopics ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+              </div>
+            ) : topics.length === 0 ? (
+              <div className="py-3 text-center text-xs text-slate-400">
+                {selectedSubject
+                  ? "Nenhum tópico cadastrado nesta disciplina."
+                  : "Selecione uma disciplina primeiro."}
+              </div>
+            ) : (
+              topics.map((t) => (
+                <SelectItem key={t.id} value={t.id}>
+                  {t.title}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
