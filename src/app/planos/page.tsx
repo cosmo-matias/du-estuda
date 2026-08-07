@@ -1,28 +1,133 @@
-import { Plus, BookOpen } from "lucide-react";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Plus, BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SubjectCard } from "@/components/planos/SubjectCard";
-import type { Plan, Subject } from "@/types";
+import { getSubjects, addSubject } from "@/services/planService";
+import type { Subject } from "@/types";
 
 // ---------------------------------------------------------------------------
-// Mock data — substituir por dados reais do Firestore nas próximas iterações
+// Constants
 // ---------------------------------------------------------------------------
-const mockPlan: Plan = {
-  id: "1",
-  userId: "user1",
-  title: "Projeto Interdisciplinar",
-  createdAt: new Date(),
-};
 
-const mockSubjects: Subject[] = [
-  { id: "1", planId: "1", title: "Matemática",        color: "#10b981" },
-  { id: "2", planId: "1", title: "Língua Portuguesa", color: "#3b82f6" },
-  { id: "3", planId: "1", title: "Geografia",         color: "#f59e0b" },
-];
+/** ID provisório até implementarmos a seleção de múltiplos planos */
+const PLAN_ID = "plano-padrao-123";
+
+/** Paleta de cores pré-definidas para seleção de disciplina */
+const COLOR_OPTIONS = [
+  { label: "Esmeralda",  value: "#10b981" },
+  { label: "Azul",       value: "#3b82f6" },
+  { label: "Âmbar",      value: "#f59e0b" },
+  { label: "Rosa",       value: "#ec4899" },
+  { label: "Violeta",    value: "#8b5cf6" },
+  { label: "Vermelho",   value: "#ef4444" },
+  { label: "Ciano",      value: "#06b6d4" },
+  { label: "Laranja",    value: "#f97316" },
+] as const;
+
+const DEFAULT_COLOR = COLOR_OPTIONS[0].value;
 
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 export default function PlanosPage() {
+  const [subjects, setSubjects]       = useState<Subject[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [dialogOpen, setDialogOpen]   = useState(false);
+
+  // Form state
+  const [newTitle, setNewTitle]       = useState("");
+  const [newColor, setNewColor]       = useState<string>(DEFAULT_COLOR);
+  const [saving, setSaving]           = useState(false);
+  const [formError, setFormError]     = useState("");
+
+  // -------------------------------------------------------------------------
+  // Fetch subjects on mount
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchSubjects() {
+      try {
+        setLoading(true);
+        const data = await getSubjects(PLAN_ID);
+        if (!cancelled) setSubjects(data);
+      } catch (err) {
+        console.error("Erro ao buscar disciplinas:", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchSubjects();
+    return () => { cancelled = true; };
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // Open / close dialog helpers
+  // -------------------------------------------------------------------------
+  function openDialog() {
+    setNewTitle("");
+    setNewColor(DEFAULT_COLOR);
+    setFormError("");
+    setDialogOpen(true);
+  }
+
+  function closeDialog() {
+    setDialogOpen(false);
+  }
+
+  // -------------------------------------------------------------------------
+  // Save new subject
+  // -------------------------------------------------------------------------
+  async function handleSave() {
+    const trimmedTitle = newTitle.trim();
+
+    if (!trimmedTitle) {
+      setFormError("O nome da disciplina é obrigatório.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setFormError("");
+
+      const created = await addSubject({
+        planId: PLAN_ID,
+        title:  trimmedTitle,
+        color:  newColor,
+      });
+
+      // Optimistic update — append to local state immediately
+      setSubjects((prev) => [...prev, created]);
+      closeDialog();
+    } catch (err) {
+      console.error("Erro ao salvar disciplina:", err);
+      setFormError("Ocorreu um erro ao salvar. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
   return (
     <div className="space-y-6">
       {/* ------------------------------------------------------------------ */}
@@ -35,20 +140,20 @@ export default function PlanosPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-slate-800">
-              {mockPlan.title}
+              Projeto Interdisciplinar
             </h1>
             <p className="text-sm text-slate-500">
-              {mockSubjects.length} disciplina
-              {mockSubjects.length !== 1 ? "s" : ""} cadastrada
-              {mockSubjects.length !== 1 ? "s" : ""}
+              {loading
+                ? "Carregando..."
+                : `${subjects.length} disciplina${subjects.length !== 1 ? "s" : ""} cadastrada${subjects.length !== 1 ? "s" : ""}`}
             </p>
           </div>
         </div>
 
-        {/* "+ Nova Disciplina" — visual only, sem função ainda */}
         <Button
           id="btn-nova-disciplina"
           className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+          onClick={openDialog}
         >
           <Plus className="h-4 w-4" />
           Nova Disciplina
@@ -56,9 +161,18 @@ export default function PlanosPage() {
       </div>
 
       {/* ------------------------------------------------------------------ */}
-      {/* Subjects grid                                                       */}
+      {/* Loading state                                                       */}
       {/* ------------------------------------------------------------------ */}
-      {mockSubjects.length === 0 ? (
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Empty state                                                         */}
+      {/* ------------------------------------------------------------------ */}
+      {!loading && subjects.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-white py-16 text-center">
           <BookOpen className="mb-3 h-10 w-10 text-slate-300" />
           <p className="text-sm font-medium text-slate-500">
@@ -68,13 +182,124 @@ export default function PlanosPage() {
             Clique em &quot;Nova Disciplina&quot; para começar.
           </p>
         </div>
-      ) : (
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Subjects grid                                                       */}
+      {/* ------------------------------------------------------------------ */}
+      {!loading && subjects.length > 0 && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {mockSubjects.map((subject) => (
+          {subjects.map((subject) => (
             <SubjectCard key={subject.id} subject={subject} />
           ))}
         </div>
       )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* "Nova Disciplina" Dialog                                            */}
+      {/* ------------------------------------------------------------------ */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova Disciplina</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {/* Title input */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="input-subject-title"
+                className="text-sm font-medium text-slate-700"
+              >
+                Nome da Disciplina
+              </label>
+              <Input
+                id="input-subject-title"
+                placeholder="Ex: Direito Constitucional"
+                value={newTitle}
+                onChange={(e) => {
+                  setNewTitle(e.target.value);
+                  if (formError) setFormError("");
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleSave()}
+                autoFocus
+              />
+              {formError && (
+                <p className="text-xs text-red-500">{formError}</p>
+              )}
+            </div>
+
+            {/* Color select */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="select-subject-color"
+                className="text-sm font-medium text-slate-700"
+              >
+                Cor de Identificação
+              </label>
+              <Select
+                value={newColor}
+                onValueChange={(val) => val && setNewColor(val as string)}
+              >
+                <SelectTrigger id="select-subject-color" className="w-full">
+                  <SelectValue>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: newColor }}
+                      />
+                      <span>
+                        {COLOR_OPTIONS.find((c) => c.value === newColor)?.label}
+                      </span>
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {COLOR_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: option.value }}
+                        />
+                        <span>{option.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Color preview strip */}
+              <div
+                className="h-2 w-full rounded-full transition-colors"
+                style={{ backgroundColor: newColor }}
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={closeDialog} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button
+              id="btn-save-subject"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Salvar Disciplina"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

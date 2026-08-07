@@ -1,3 +1,5 @@
+"use client";
+
 import { BookOpen, CheckCircle2, HelpCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Subject } from "@/types";
@@ -29,24 +31,28 @@ interface SubjectCardProps {
 }
 
 export function SubjectCard({ subject }: SubjectCardProps) {
+  // Guard against undefined/empty values coming from Firestore
+  const title = subject?.title?.trim() || "Disciplina sem nome";
+  const color = subject?.color?.trim() || "#94a3b8"; // slate-400 fallback
+
   return (
     <Card className="overflow-hidden transition-shadow hover:shadow-md">
-      {/* Colored top border using inline style for dynamic HEX colors */}
+      {/* Colored top border — uses inline style for dynamic HEX colors */}
       <div
         className="h-1.5 w-full"
-        style={{ backgroundColor: subject.color }}
+        style={{ backgroundColor: color }}
         aria-hidden="true"
       />
 
       <CardHeader className="flex flex-row items-center gap-3 pb-2 pt-4">
         {/* Color dot indicator */}
         <div
-          className="h-3 w-3 rounded-full shrink-0"
-          style={{ backgroundColor: subject.color }}
+          className="h-3 w-3 shrink-0 rounded-full"
+          style={{ backgroundColor: color }}
           aria-hidden="true"
         />
         <CardTitle className="text-base font-semibold leading-tight text-slate-800">
-          {subject.title}
+          {title}
         </CardTitle>
       </CardHeader>
 
