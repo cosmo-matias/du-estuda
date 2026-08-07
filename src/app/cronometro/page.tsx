@@ -89,6 +89,17 @@ function formatTime(totalSeconds: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Helper — parse a string input to a positive integer, or return undefined.
+// Guards against empty strings, NaN, and negative values.
+// ---------------------------------------------------------------------------
+function safeInt(value: string): number | undefined {
+  if (!value.trim()) return undefined;
+  const parsed = parseInt(value, 10);
+  if (Number.isNaN(parsed) || parsed < 0) return undefined;
+  return parsed;
+}
+
+// ---------------------------------------------------------------------------
 // Page component
 // ---------------------------------------------------------------------------
 export default function CronometroPage() {
@@ -240,19 +251,16 @@ export default function CronometroPage() {
 
       await addStudySession({
         userId:            PLACEHOLDER_USER_ID,
-        subjectId:         selectedSubject || "sem-disciplina",
-        topicId:           selectedTopic   || undefined,
+        subjectId:         selectedSubject   || "sem-disciplina",
+        topicId:           selectedTopic     || undefined,
         date:              new Date(),
         durationInSeconds: elapsedSeconds,
         category:          (selectedCategory as StudyCategory) || "Teoria",
-        questionsAnswered: questionsAnswered
-          ? parseInt(questionsAnswered, 10)
-          : undefined,
-        questionsCorrect: questionsCorrect
-          ? parseInt(questionsCorrect, 10)
-          : undefined,
-        pagesRead: pagesRead ? parseInt(pagesRead, 10) : undefined,
-        notes:     notes.trim() || undefined,
+        // safeInt guards against empty string, NaN and negative values
+        questionsAnswered: safeInt(questionsAnswered),
+        questionsCorrect:  safeInt(questionsCorrect),
+        pagesRead:         safeInt(pagesRead),
+        notes:             notes.trim() || undefined,
       });
 
       setIsDialogOpen(false);
