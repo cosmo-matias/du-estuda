@@ -26,6 +26,7 @@ export interface StudyPlan {
   title: string;
   targetDate: string;
   active: boolean;
+  currentCyclePosition?: number;
 }
 
 // -----------------------------------------------------------------------------

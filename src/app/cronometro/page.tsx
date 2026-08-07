@@ -22,6 +22,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { addStudySession } from "@/services/sessionService";
+import { updatePlan } from "@/services/studyPlanService";
 import { getSubjectsByPlan } from "@/services/planSubjectService";
 import { getTopicsBySubject } from "@/services/topicService";
 import type { Topic, StudyCategory } from "@/types";
@@ -90,8 +91,11 @@ export default function CronometroPage() {
 function CronometroContent() {
   const searchParams = useSearchParams();
   const querySubjectId = searchParams.get("subjectId");
+  const queryCycleIndex = searchParams.get("cycleIndex");
+  const queryCycleLength = searchParams.get("cycleLength");
+  
   const { user }                              = useAuth();
-  const { activePlan }                        = usePlan();
+  const { activePlan, setActivePlan }         = usePlan();
 
   // ---------------------------------------------------------------------- //
   // Mode & Pomodoro settings                                                //
@@ -333,6 +337,17 @@ function CronometroContent() {
       };
 
       await addStudySession(sessionPayload);
+
+      if (queryCycleIndex && queryCycleLength && activePlan) {
+        const cIndex = parseInt(queryCycleIndex, 10);
+        const cLength = parseInt(queryCycleLength, 10);
+        if (!isNaN(cIndex) && !isNaN(cLength) && cLength > 0) {
+          const nextPos = (cIndex + 1) % cLength;
+          await updatePlan(activePlan.id, { currentCyclePosition: nextPos });
+          // Update the local context so it reflects immediately on navigation
+          setActivePlan({ ...activePlan, currentCyclePosition: nextPos });
+        }
+      }
 
       setIsDialogOpen(false);
       resetTimer();

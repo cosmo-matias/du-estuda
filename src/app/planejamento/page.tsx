@@ -15,6 +15,8 @@ export default function PlanejamentoPage() {
   const { user } = useAuth();
   const { activePlan } = usePlan();
   
+  const currentPos = activePlan?.currentCyclePosition || 0;
+  
   const [subjects, setSubjects] = useState<PlanSubjectWithDetails[]>([]);
   const [cycle, setCycle] = useState<PlanSubjectWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,14 +101,18 @@ export default function PlanejamentoPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {cycle.map((item, index) => {
           const color = item.subjectColor || "#6366f1";
+          const isCurrent = index === currentPos;
+          
           return (
             <div
               key={`${item.id}-${index}`}
-              className="flex flex-col justify-between rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md relative overflow-hidden group"
-              style={{ borderColor: color }}
+              className={`flex flex-col justify-between rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md relative overflow-hidden group ${
+                isCurrent ? "ring-2 ring-offset-2" : ""
+              }`}
+              style={{ borderColor: color, ...(isCurrent ? { ringColor: color } : {}) }}
             >
               <div 
-                className="absolute top-0 left-0 h-full w-1.5 opacity-70 group-hover:opacity-100 transition-opacity" 
+                className={`absolute top-0 left-0 h-full w-1.5 opacity-70 group-hover:opacity-100 transition-opacity ${isCurrent ? "opacity-100" : ""}`} 
                 style={{ backgroundColor: color }} 
               />
               
@@ -114,9 +120,9 @@ export default function PlanejamentoPage() {
                 <div className="flex items-center justify-between">
                   <span 
                     className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                    style={{ backgroundColor: `${color}15`, color: color }}
+                    style={{ backgroundColor: isCurrent ? color : `${color}15`, color: isCurrent ? "#fff" : color }}
                   >
-                    Bloco {index + 1}
+                    Bloco {index + 1} {isCurrent && "(Atual)"}
                   </span>
                   
                   {index < cycle.length - 1 && (
@@ -135,9 +141,10 @@ export default function PlanejamentoPage() {
                 </span>
                 <Button 
                   size="sm" 
-                  variant="ghost" 
-                  className="h-8 px-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
-                  onClick={() => router.push(`/cronometro?subjectId=${item.subjectId}`)}
+                  variant={isCurrent ? "default" : "ghost"} 
+                  className={`h-8 px-2 ${isCurrent ? "text-white" : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"}`}
+                  style={isCurrent ? { backgroundColor: color } : {}}
+                  onClick={() => router.push(`/cronometro?subjectId=${item.subjectId}&cycleIndex=${index}&cycleLength=${cycle.length}`)}
                   title="Estudar agora"
                 >
                   <Play className="h-4 w-4" />
