@@ -188,7 +188,7 @@ export default function PlanosPage() {
                   </span>
                 </div>
                 <Link
-                  href={`/planos/${plan.id}`}
+                  href={`/planos/detalhes?id=${plan.id}`}
                   className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-indigo-50 text-indigo-700 hover:bg-indigo-100 h-9 px-3"
                 >
                   Abrir

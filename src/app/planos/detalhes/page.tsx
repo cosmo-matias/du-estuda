@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
 import { Plus, Trash2, ArrowLeft, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,8 +26,9 @@ import {
 } from "@/services/planSubjectService";
 import type { StudyPlan, Subject } from "@/types";
 
-export default function PlanDetailsPage() {
-  const { id } = useParams() as { id: string };
+function PlanDetailsContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
   const router = useRouter();
   const { user } = useAuth();
   
@@ -72,7 +74,7 @@ export default function PlanDetailsPage() {
 
   async function handleAddSubject(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedSubjectId) return;
+    if (!selectedSubjectId || !id) return;
 
     try {
       const added = await addSubjectToPlan({
@@ -245,5 +247,17 @@ export default function PlanDetailsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function PlanDetailsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    }>
+      <PlanDetailsContent />
+    </Suspense>
   );
 }

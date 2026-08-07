@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense } from "react";
 import { Play, Clock, Target, CheckCircle, ArrowLeft, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,8 +20,9 @@ function formatDuration(totalSeconds: number): string {
   return `${h}h ${m}min`;
 }
 
-export default function SubjectDashboardPage() {
-  const { id } = useParams() as { id: string };
+function SubjectDashboardContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
   const router = useRouter();
   const { user } = useAuth();
 
@@ -288,5 +290,17 @@ export default function SubjectDashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SubjectDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    }>
+      <SubjectDashboardContent />
+    </Suspense>
   );
 }
