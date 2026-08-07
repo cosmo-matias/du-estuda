@@ -142,6 +142,36 @@ export default function DashboardPage() {
     return { tracker, streak };
   }, [sessions]);
 
+  // 5. Calendário de Constância (Mês Atual)
+  const { currentMonthDays, studiedDates } = useMemo(() => {
+    const dates = new Set<string>();
+    sessions.forEach(s => {
+      dates.add(new Date(s.date).toDateString());
+    });
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    // Get first day of month (0 = Sunday)
+    const firstDay = new Date(year, month, 1).getDay();
+    // Get number of days in month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Generate array for the calendar grid
+    const days = [];
+    // Empty slots for padding
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null);
+    }
+    // Actual days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(new Date(year, month, i));
+    }
+
+    return { currentMonthDays: days, studiedDates: dates };
+  }, [sessions]);
+
   // 3. Estudos do Dia (PieChart)
   const dailySubjectsData = useMemo(() => {
     const todayStr = new Date().toDateString();
@@ -307,38 +337,81 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Section 2: Habit Tracker */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg text-slate-800">Constância nos Estudos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4">
-            <p className="text-sm font-medium text-emerald-600 bg-emerald-50 w-fit px-3 py-1 rounded-full border border-emerald-100">
-              {habitTracker.streak > 0 
-                ? `🔥 Você está há ${habitTracker.streak} dia(s) sem falhar!`
-                : "Comece a estudar hoje para criar sua constância!"}
-            </p>
-            
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              {habitTracker.tracker.map((status, idx) => (
-                <div
-                  key={idx}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
-                    status
-                      ? "bg-emerald-100 border-emerald-200 text-emerald-600"
-                      : "bg-red-50 border-red-100 text-red-400"
-                  }`}
-                  title={status ? "Meta atingida" : "Falhou"}
-                >
-                  {status ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+      {/* Section 2: Habit Tracker & Calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle className="text-lg text-slate-800">Constância nos Estudos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4">
+                <p className="text-sm font-medium text-emerald-600 bg-emerald-50 w-fit px-3 py-1 rounded-full border border-emerald-100">
+                  {habitTracker.streak > 0 
+                    ? `🔥 Você está há ${habitTracker.streak} dia(s) sem falhar!`
+                    : "Comece a estudar hoje para criar sua constância!"}
+                </p>
+                
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {habitTracker.tracker.map((status, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
+                        status
+                          ? "bg-emerald-100 border-emerald-200 text-emerald-600"
+                          : "bg-red-50 border-red-100 text-red-400"
+                      }`}
+                      title={status ? "Meta atingida" : "Falhou"}
+                    >
+                      {status ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <p className="text-xs text-slate-400 mt-1">Últimos 14 dias</p>
-          </div>
-        </CardContent>
-      </Card>
+                <p className="text-xs text-slate-400 mt-1">Últimos 14 dias</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-1">
+          <Card className="h-full flex flex-col">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider capitalize">
+                {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-center">
+              <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
+                  <div key={i} className="text-xs font-semibold text-slate-400">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {currentMonthDays.map((dateObj, i) => {
+                  if (!dateObj) return <div key={`empty-${i}`} className="aspect-square" />;
+                  
+                  const isToday = dateObj.toDateString() === new Date().toDateString();
+                  const isStudied = studiedDates.has(dateObj.toDateString());
+                  
+                  return (
+                    <div
+                      key={i}
+                      className={`aspect-square flex items-center justify-center rounded-md text-xs font-medium transition-all ${
+                        isStudied
+                          ? "bg-emerald-500 text-white shadow-sm"
+                          : "bg-slate-50 text-slate-500 hover:bg-slate-100"
+                      } ${isToday ? "ring-2 ring-indigo-500 ring-offset-1" : ""}`}
+                      title={isStudied ? "Estudou neste dia!" : ""}
+                    >
+                      {dateObj.getDate()}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Section 3: Charts */}
       <div className="grid gap-6 md:grid-cols-2">
