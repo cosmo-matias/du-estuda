@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { Play, Pause, Square } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Play, Pause, Square, RotateCcw, Loader2, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -10,11 +13,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { addStudySession } from "@/services/sessionService";
+import type { StudyCategory } from "@/types";
 
 // ---------------------------------------------------------------------------
-// Mock data — will be replaced with Firestore data in future iterations
+// Constants & mock data
 // ---------------------------------------------------------------------------
+
 const MOCK_SUBJECTS = [
   { id: "1", title: "Matemática" },
   { id: "2", title: "Língua Portuguesa" },
@@ -47,49 +59,284 @@ const MOCK_TOPICS: Record<string, { id: string; title: string }[]> = {
   ],
 };
 
-const CATEGORIES = ["Teoria", "Questões", "Revisão", "Leitura de Lei"] as const;
+const CATEGORIES: StudyCategory[] = [
+  "Teoria",
+  "Questões",
+  "Revisão",
+  "Leitura de Lei",
+];
+
+/** Pomodoro duration options in minutes */
+const POMODORO_DURATIONS = [25, 30, 50] as const;
+
+// Placeholder until authentication is implemented
+const PLACEHOLDER_USER_ID = "user-placeholder-123";
 
 // ---------------------------------------------------------------------------
-// Timer state type
+// Types
 // ---------------------------------------------------------------------------
+type TimerMode  = "free" | "pomodoro";
 type TimerState = "idle" | "running" | "paused";
 
 // ---------------------------------------------------------------------------
-// Page
+// Helper — format seconds as HH:MM:SS
+// ---------------------------------------------------------------------------
+function formatTime(totalSeconds: number): string {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return [h, m, s].map((v) => String(v).padStart(2, "0")).join(":");
+}
+
+// ---------------------------------------------------------------------------
+// Page component
 // ---------------------------------------------------------------------------
 export default function CronometroPage() {
-  const [timerState, setTimerState]     = useState<TimerState>("idle");
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
-  const [selectedTopic, setSelectedTopic]     = useState<string>("");
+  // ---------------------------------------------------------------------- //
+  // Mode & Pomodoro settings                                                //
+  // ---------------------------------------------------------------------- //
+  const [mode, setMode]                       = useState<TimerMode>("free");
+  const [pomodoroDuration, setPomodoroDuration] = useState<number>(25);
+
+  // ---------------------------------------------------------------------- //
+  // Timer                                                                   //
+  // ---------------------------------------------------------------------- //
+  const [timerState, setTimerState]   = useState<TimerState>("idle");
+  const [elapsedSeconds, setElapsed]  = useState(0);
+  const intervalRef                   = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ---------------------------------------------------------------------- //
+  // Context selectors                                                       //
+  // ---------------------------------------------------------------------- //
+  const [selectedSubject, setSelectedSubject]   = useState<string>("");
+  const [selectedTopic, setSelectedTopic]       = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
 
-  const availableTopics = selectedSubject ? (MOCK_TOPICS[selectedSubject] ?? []) : [];
+  // ---------------------------------------------------------------------- //
+  // Session dialog                                                          //
+  // ---------------------------------------------------------------------- //
+  const [isDialogOpen, setIsDialogOpen]           = useState(false);
+  const [questionsAnswered, setQuestionsAnswered] = useState("");
+  const [questionsCorrect, setQuestionsCorrect]   = useState("");
+  const [pagesRead, setPagesRead]                 = useState("");
+  const [notes, setNotes]                         = useState("");
+  const [saving, setSaving]                       = useState(false);
+  const [saveError, setSaveError]                 = useState("");
 
+  // ---------------------------------------------------------------------- //
+  // Derived values                                                          //
+  // ---------------------------------------------------------------------- //
+  const pomodoroTotalSec = pomodoroDuration * 60;
+
+  /** Seconds shown on the clock face */
+  const displaySeconds =
+    mode === "free"
+      ? elapsedSeconds
+      : Math.max(0, pomodoroTotalSec - elapsedSeconds);
+
+  const availableTopics = MOCK_TOPICS[selectedSubject] ?? [];
+  const subjectLabel =
+    MOCK_SUBJECTS.find((s) => s.id === selectedSubject)?.title ??
+    "Não selecionada";
+
+  const pomodoroProgress =
+    pomodoroTotalSec > 0
+      ? Math.min(100, Math.round((elapsedSeconds / pomodoroTotalSec) * 100))
+      : 0;
+
+  // ---------------------------------------------------------------------- //
+  // Timer interval — increments elapsedSeconds every second when running   //
+  // ---------------------------------------------------------------------- //
+  useEffect(() => {
+    if (timerState === "running") {
+      intervalRef.current = setInterval(
+        () => setElapsed((prev) => prev + 1),
+        1000
+      );
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [timerState]);
+
+  // Auto-finish Pomodoro when time runs out
+  useEffect(() => {
+    if (
+      mode === "pomodoro" &&
+      timerState === "running" &&
+      elapsedSeconds >= pomodoroTotalSec
+    ) {
+      setTimerState("paused");
+      openSessionDialog();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elapsedSeconds, mode, timerState, pomodoroTotalSec]);
+
+  // ---------------------------------------------------------------------- //
+  // Control handlers                                                        //
+  // ---------------------------------------------------------------------- //
   function handlePlay()  { setTimerState("running"); }
   function handlePause() { setTimerState("paused");  }
-  function handleStop()  { setTimerState("idle");    }
 
+  function handleStop() {
+    setTimerState("paused");
+    if (elapsedSeconds > 0) {
+      openSessionDialog();
+    } else {
+      resetTimer();
+    }
+  }
+
+  function resetTimer() {
+    setTimerState("idle");
+    setElapsed(0);
+  }
+
+  // ---------------------------------------------------------------------- //
+  // Mode switching (only when timer is idle)                                //
+  // ---------------------------------------------------------------------- //
+  function handleModeChange(value: string | null) {
+    if (!value || timerState !== "idle") return;
+    setMode(value as TimerMode);
+    setElapsed(0);
+  }
+
+  function handlePomodoroDuration(minutes: number) {
+    if (timerState !== "idle") return;
+    setPomodoroDuration(minutes);
+    setElapsed(0);
+  }
+
+  // ---------------------------------------------------------------------- //
+  // Session dialog helpers                                                  //
+  // ---------------------------------------------------------------------- //
+  function openSessionDialog() {
+    setQuestionsAnswered("");
+    setQuestionsCorrect("");
+    setPagesRead("");
+    setNotes("");
+    setSaveError("");
+    setIsDialogOpen(true);
+  }
+
+  function handleDiscardSession() {
+    setIsDialogOpen(false);
+    resetTimer();
+  }
+
+  async function handleSaveSession() {
+    try {
+      setSaving(true);
+      setSaveError("");
+
+      await addStudySession({
+        userId:            PLACEHOLDER_USER_ID,
+        subjectId:         selectedSubject || "sem-disciplina",
+        topicId:           selectedTopic   || undefined,
+        date:              new Date(),
+        durationInSeconds: elapsedSeconds,
+        category:          (selectedCategory as StudyCategory) || "Teoria",
+        questionsAnswered: questionsAnswered
+          ? parseInt(questionsAnswered, 10)
+          : undefined,
+        questionsCorrect: questionsCorrect
+          ? parseInt(questionsCorrect, 10)
+          : undefined,
+        pagesRead: pagesRead ? parseInt(pagesRead, 10) : undefined,
+        notes:     notes.trim() || undefined,
+      });
+
+      setIsDialogOpen(false);
+      resetTimer();
+    } catch (err) {
+      console.error("Erro ao salvar sessão:", err);
+      setSaveError("Erro ao salvar. Verifique sua conexão e tente novamente.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ---------------------------------------------------------------------- //
+  // Render                                                                  //
+  // ---------------------------------------------------------------------- //
   return (
-    <div className="flex min-h-full flex-col items-center justify-center gap-10 py-12">
+    <div className="flex min-h-full flex-col items-center justify-center gap-8 py-12">
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Mode tabs — disabled while timer is active                         */}
+      {/* ------------------------------------------------------------------ */}
+      <Tabs
+        value={mode}
+        onValueChange={handleModeChange}
+        className="w-full max-w-2xl"
+      >
+        <TabsList className="w-full">
+          <TabsTrigger
+            value="free"
+            disabled={timerState !== "idle"}
+            className="flex-1"
+          >
+            ⏱ Modo Livre
+          </TabsTrigger>
+          <TabsTrigger
+            value="pomodoro"
+            disabled={timerState !== "idle"}
+            className="flex-1"
+          >
+            🍅 Pomodoro
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Pomodoro duration picker — only visible in pomodoro mode */}
+        <TabsContent value="pomodoro" className="mt-4">
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-sm text-slate-500">Tempo de foco:</span>
+            {POMODORO_DURATIONS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => handlePomodoroDuration(d)}
+                disabled={timerState !== "idle"}
+                className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors
+                  ${
+                    pomodoroDuration === d
+                      ? "bg-emerald-600 text-white shadow-sm"
+                      : "border bg-white text-slate-600 hover:bg-slate-50"
+                  }
+                  disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                {d} min
+              </button>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* ------------------------------------------------------------------ */}
       {/* Context selectors                                                   */}
       {/* ------------------------------------------------------------------ */}
-      <div className="flex w-full max-w-2xl flex-col items-center gap-4">
+      <div className="flex w-full max-w-2xl flex-col items-center gap-3">
         <p className="text-sm font-medium uppercase tracking-widest text-slate-400">
           O que você está estudando agora?
         </p>
 
         {/* Row 1 — Disciplina + Categoria */}
         <div className="flex w-full flex-col gap-3 sm:flex-row">
-          {/* Disciplina */}
           <Select
             value={selectedSubject}
             onValueChange={(v) => {
-              if (v) {
-                setSelectedSubject(v);
-                setSelectedTopic(""); // reset topic when subject changes
-              }
+              if (!v) return;
+              setSelectedSubject(v);
+              setSelectedTopic("");
             }}
           >
             <SelectTrigger id="select-disciplina" className="flex-1 bg-white">
@@ -104,7 +351,6 @@ export default function CronometroPage() {
             </SelectContent>
           </Select>
 
-          {/* Categoria */}
           <Select
             value={selectedCategory}
             onValueChange={(v) => { if (v) setSelectedCategory(v); }}
@@ -122,21 +368,18 @@ export default function CronometroPage() {
           </Select>
         </div>
 
-        {/* Row 2 — Tópico (full width) */}
+        {/* Row 2 — Tópico */}
         <Select
           value={selectedTopic}
           onValueChange={(v) => { if (v) setSelectedTopic(v); }}
           disabled={availableTopics.length === 0}
         >
-          <SelectTrigger
-            id="select-topico"
-            className="w-full bg-white disabled:opacity-50"
-          >
+          <SelectTrigger id="select-topico" className="w-full bg-white">
             <SelectValue
               placeholder={
                 availableTopics.length === 0
                   ? "Selecione uma disciplina primeiro…"
-                  : "Selecione o tópico…"
+                  : "Selecione o tópico (opcional)…"
               }
             />
           </SelectTrigger>
@@ -153,9 +396,9 @@ export default function CronometroPage() {
       <Separator className="w-full max-w-2xl" />
 
       {/* ------------------------------------------------------------------ */}
-      {/* Timer display                                                       */}
+      {/* Clock display                                                       */}
       {/* ------------------------------------------------------------------ */}
-      <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center gap-4">
         {/* Status pill */}
         <span
           className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-widest transition-colors ${
@@ -173,7 +416,7 @@ export default function CronometroPage() {
             : "Pronto para iniciar"}
         </span>
 
-        {/* Clock face */}
+        {/* Giant clock */}
         <div
           className={`select-none font-mono text-8xl font-bold tabular-nums tracking-tight transition-colors md:text-9xl ${
             timerState === "running"
@@ -185,8 +428,27 @@ export default function CronometroPage() {
           aria-label="Cronômetro"
           aria-live="polite"
         >
-          00:00:00
+          {formatTime(displaySeconds)}
         </div>
+
+        {/* Pomodoro progress bar */}
+        {mode === "pomodoro" && timerState !== "idle" && (
+          <div className="w-full max-w-sm space-y-1">
+            <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+              <div
+                className="h-2 rounded-full bg-emerald-500 transition-all duration-1000"
+                style={{ width: `${pomodoroProgress}%` }}
+                role="progressbar"
+                aria-valuenow={pomodoroProgress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+              />
+            </div>
+            <p className="text-center text-xs text-slate-400">
+              {pomodoroProgress}% concluído
+            </p>
+          </div>
+        )}
       </div>
 
       <Separator className="w-full max-w-2xl" />
@@ -194,22 +456,21 @@ export default function CronometroPage() {
       {/* ------------------------------------------------------------------ */}
       {/* Controls                                                            */}
       {/* ------------------------------------------------------------------ */}
-      <div className="flex items-center gap-4">
-
-        {/* Stop / Save */}
+      <div className="flex items-center gap-6">
+        {/* Stop / Finalizar */}
         <Button
           id="btn-stop-timer"
           variant="outline"
           size="lg"
           disabled={timerState === "idle"}
           onClick={handleStop}
-          className="h-14 w-14 rounded-full border-2 border-red-200 text-red-400 hover:border-red-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-30"
-          aria-label="Parar e salvar sessão"
+          className="h-14 w-14 rounded-full border-2 border-red-200 text-red-400 hover:border-red-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-25"
+          aria-label="Finalizar e salvar sessão"
         >
           <Square className="h-6 w-6 fill-current" />
         </Button>
 
-        {/* Play / Pause — primary action */}
+        {/* Play / Pause — the primary action */}
         {timerState === "running" ? (
           <Button
             id="btn-pause-timer"
@@ -232,20 +493,196 @@ export default function CronometroPage() {
           </Button>
         )}
 
-        {/* Placeholder for a future "Lap" or "Notes" action */}
-        <div className="h-14 w-14" aria-hidden="true" />
+        {/* Reset (active only when there's elapsed time and timer is not running) */}
+        <Button
+          id="btn-reset-timer"
+          variant="ghost"
+          size="lg"
+          onClick={resetTimer}
+          disabled={elapsedSeconds === 0 || timerState === "running"}
+          className="h-14 w-14 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:opacity-25"
+          aria-label="Resetar cronômetro"
+        >
+          <RotateCcw className="h-5 w-5" />
+        </Button>
       </div>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Hint text                                                           */}
-      {/* ------------------------------------------------------------------ */}
+      {/* Hint text */}
       <p className="text-xs text-slate-400">
         {timerState === "idle"
           ? "Selecione a disciplina e pressione Play para começar."
           : timerState === "running"
-          ? "Foco total! Pressione Pause para interromper ou Stop para salvar a sessão."
-          : "Sessão pausada. Pressione Play para continuar ou Stop para salvar."}
+          ? "Foco total! Pressione Pause para interromper ou Stop (■) para finalizar e salvar a sessão."
+          : "Sessão pausada. Pressione Play para continuar ou Stop (■) para salvar."}
       </p>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Session registration Dialog                                         */}
+      {/* Controlled — no DialogTrigger (Base UI limitation, same pattern     */}
+      {/* used in SubjectCard).                                               */}
+      {/* ------------------------------------------------------------------ */}
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !saving) handleDiscardSession();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold">
+              Registrar Sessão de Estudo
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Summary card */}
+          <div className="rounded-xl bg-emerald-50 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-200">
+                <BookOpen className="h-4 w-4 text-emerald-700" />
+              </div>
+              <span className="text-sm font-semibold text-emerald-800">
+                Resumo da sessão
+              </span>
+            </div>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Tempo total</span>
+                <span className="font-mono font-bold text-emerald-700">
+                  {formatTime(elapsedSeconds)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Disciplina</span>
+                <span className="font-medium text-slate-700">{subjectLabel}</span>
+              </div>
+              {selectedCategory && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Tipo de atividade</span>
+                  <span className="font-medium text-slate-700">
+                    {selectedCategory}
+                  </span>
+                </div>
+              )}
+              {mode === "pomodoro" && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Modo</span>
+                  <span className="font-medium text-slate-700">
+                    🍅 Pomodoro {pomodoroDuration} min
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Optional metrics */}
+          <div className="space-y-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+              Métricas opcionais
+            </p>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label
+                  htmlFor="input-questions-answered"
+                  className="block text-xs font-medium text-slate-600"
+                >
+                  Questões
+                </label>
+                <Input
+                  id="input-questions-answered"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={questionsAnswered}
+                  onChange={(e) => setQuestionsAnswered(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="input-questions-correct"
+                  className="block text-xs font-medium text-slate-600"
+                >
+                  Acertos
+                </label>
+                <Input
+                  id="input-questions-correct"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={questionsCorrect}
+                  onChange={(e) => setQuestionsCorrect(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label
+                  htmlFor="input-pages-read"
+                  className="block text-xs font-medium text-slate-600"
+                >
+                  Páginas
+                </label>
+                <Input
+                  id="input-pages-read"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={pagesRead}
+                  onChange={(e) => setPagesRead(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Notes textarea */}
+            <div className="space-y-1">
+              <label
+                htmlFor="textarea-notes"
+                className="block text-xs font-medium text-slate-600"
+              >
+                Comentários (opcional)
+              </label>
+              <textarea
+                id="textarea-notes"
+                rows={3}
+                placeholder="Como foi a sessão? Alguma dúvida ou insight?"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+
+            {saveError && (
+              <p className="text-xs text-red-500">{saveError}</p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              id="btn-discard-session"
+              variant="outline"
+              onClick={handleDiscardSession}
+              disabled={saving}
+            >
+              Descartar
+            </Button>
+            <Button
+              id="btn-save-session"
+              onClick={handleSaveSession}
+              disabled={saving}
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando…
+                </>
+              ) : (
+                "Salvar Sessão"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
