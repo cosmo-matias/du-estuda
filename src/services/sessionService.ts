@@ -12,6 +12,17 @@ import type { StudySession } from "@/types";
 const sessionsRef = collection(db, "studySessions");
 
 // ---------------------------------------------------------------------------
+// stripUndefined
+// Firestore rejects documents that contain explicit `undefined` values.
+// This helper removes all keys whose value is undefined before persisting.
+// ---------------------------------------------------------------------------
+function stripUndefined<T extends object>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as Partial<T>;
+}
+
+// ---------------------------------------------------------------------------
 // addStudySession
 // Persiste uma sessão de estudo no Firestore.
 // Retorna o objeto completo com o ID gerado.
@@ -19,7 +30,7 @@ const sessionsRef = collection(db, "studySessions");
 export async function addStudySession(
   session: Omit<StudySession, "id">
 ): Promise<StudySession> {
-  const docRef = await addDoc(sessionsRef, {
+  const payload = stripUndefined({
     ...session,
     // Normalise date to ISO string before persisting
     date: session.date instanceof Date
@@ -27,6 +38,8 @@ export async function addStudySession(
       : session.date,
     createdAt: serverTimestamp(),
   });
+
+  const docRef = await addDoc(sessionsRef, payload);
 
   return { id: docRef.id, ...session };
 }
