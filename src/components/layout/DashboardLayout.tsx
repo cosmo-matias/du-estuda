@@ -12,6 +12,7 @@ import {
   History,
   BarChart2,
   ClipboardList,
+  Timer,
   Bell,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 // ---------------------------------------------------------------------------
 const navItems = [
   { label: "Home",         href: "/",             icon: Home },
+  { label: "Cronômetro",   href: "/cronometro",   icon: Timer },
   { label: "Planos",       href: "/planos",       icon: BookOpen },
   { label: "Edital",       href: "/edital",       icon: FileText },
   { label: "Disciplinas",  href: "/disciplinas",  icon: Layers },
