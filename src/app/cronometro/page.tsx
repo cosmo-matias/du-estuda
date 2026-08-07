@@ -277,29 +277,38 @@ export default function CronometroPage() {
   }
 
   async function handleSaveSession() {
+    if (!selectedSubject) {
+      setSaveError("Erro: Selecione uma disciplina antes de salvar a sessão.");
+      return;
+    }
+
     try {
       setSaving(true);
       setSaveError("");
 
-      await addStudySession({
+      const sessionPayload = {
         userId:            PLACEHOLDER_USER_ID,
-        subjectId:         selectedSubject   || "sem-disciplina",
-        topicId:           selectedTopic     || undefined,
+        subjectId:         selectedSubject,
+        topicId:           selectedTopic || undefined,
         date:              new Date(),
         durationInSeconds: elapsedSeconds,
         category:          (selectedCategory as StudyCategory) || "Teoria",
-        // safeInt guards against empty string, NaN and negative values
         questionsAnswered: safeInt(questionsAnswered),
         questionsCorrect:  safeInt(questionsCorrect),
         pagesRead:         safeInt(pagesRead),
         notes:             notes.trim() || undefined,
-      });
+      };
+
+      await addStudySession(sessionPayload);
 
       setIsDialogOpen(false);
       resetTimer();
-    } catch (err) {
-      console.error("Erro ao salvar sessão:", err);
-      setSaveError("Erro ao salvar. Verifique sua conexão e tente novamente.");
+    } catch (err: any) {
+      console.error("Erro original ao salvar sessão no Firestore:", err);
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
+      setSaveError(`Falha ao salvar: ${errorMessage}`);
+      // Fallback de alerta nativo para evitar falha completamente silenciosa caso o erro não seja visto na UI
+      alert(`Erro crítico ao salvar a sessão: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
