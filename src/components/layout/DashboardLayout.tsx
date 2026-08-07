@@ -6,13 +6,11 @@ import { useEffect } from "react";
 import {
   Home,
   BookOpen,
-  FileText,
   Layers,
   CalendarDays,
   RefreshCcw,
   History,
   BarChart2,
-  ClipboardList,
   Timer,
   Bell,
   LogOut,
@@ -31,13 +29,11 @@ const navItems = [
   { label: "Home",         href: "/",             icon: Home },
   { label: "Cronômetro",   href: "/cronometro",   icon: Timer },
   { label: "Planos",       href: "/planos",       icon: BookOpen },
-  { label: "Edital",       href: "/edital",       icon: FileText },
   { label: "Disciplinas",  href: "/disciplinas",  icon: Layers },
   { label: "Planejamento", href: "/planejamento", icon: CalendarDays },
   { label: "Revisões",     href: "/revisoes",     icon: RefreshCcw },
   { label: "Histórico",    href: "/historico",    icon: History },
   { label: "Estatísticas", href: "/estatisticas", icon: BarChart2 },
-  { label: "Simulados",    href: "/simulados",    icon: ClipboardList },
 ] as const;
 
 // ---------------------------------------------------------------------------
