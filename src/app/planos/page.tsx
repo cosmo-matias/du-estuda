@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useEffect } from "react";
 import { Plus, Folder, Calendar, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -176,13 +178,21 @@ export default function PlanosPage() {
                 </h3>
               </div>
 
-              <div className="flex items-center gap-2 text-sm text-slate-500 mt-4">
-                <Calendar className="h-4 w-4 shrink-0" />
-                <span>
-                  {plan.targetDate
-                    ? new Date(plan.targetDate + "T00:00:00").toLocaleDateString("pt-BR")
-                    : "Sem data definida"}
-                </span>
+              <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <Calendar className="h-4 w-4 shrink-0" />
+                  <span>
+                    {plan.targetDate
+                      ? new Date(plan.targetDate + "T00:00:00").toLocaleDateString("pt-BR")
+                      : "Sem data definida"}
+                  </span>
+                </div>
+                <Link
+                  href={`/planos/${plan.id}`}
+                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring bg-indigo-50 text-indigo-700 hover:bg-indigo-100 h-9 px-3"
+                >
+                  Abrir
+                </Link>
               </div>
             </CardContent>
           </Card>

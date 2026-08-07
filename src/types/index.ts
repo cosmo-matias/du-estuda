@@ -43,6 +43,18 @@ export interface Subject {
 }
 
 // -----------------------------------------------------------------------------
+// PlanSubject
+// Tabela pivô que vincula uma disciplina a um plano de estudos com configurações.
+// -----------------------------------------------------------------------------
+export interface PlanSubject {
+  id: string;
+  planId: string;
+  subjectId: string;
+  weight: number;
+  proficiency: string;
+}
+
+// -----------------------------------------------------------------------------
 // Topic
 // Um tópico/item de conteúdo dentro de uma disciplina.
 // Exemplo: "Princípios Fundamentais", "Teoria dos Conjuntos".

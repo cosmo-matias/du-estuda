@@ -7,6 +7,7 @@ import {
   doc,
   query,
   where,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { StudyPlan } from "@/types";
@@ -34,6 +35,15 @@ export async function getPlans(userId: string): Promise<StudyPlan[]> {
     id: doc.id,
     ...(doc.data() as Omit<StudyPlan, "id">),
   }));
+}
+
+export async function getPlanById(planId: string): Promise<StudyPlan | null> {
+  const docRef = doc(db, "studyPlans", planId);
+  const snapshot = await getDoc(docRef);
+  if (snapshot.exists()) {
+    return { id: snapshot.id, ...snapshot.data() } as StudyPlan;
+  }
+  return null;
 }
 
 export async function updatePlan(planId: string, data: Partial<StudyPlan>): Promise<void> {

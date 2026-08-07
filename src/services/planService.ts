@@ -31,6 +31,16 @@ export async function getSubjects(userId: string, planId: string): Promise<Subje
   }));
 }
 
+export async function getAllSubjects(userId: string): Promise<Subject[]> {
+  const q = query(subjectsRef, where("userId", "==", userId));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...(doc.data() as Omit<Subject, "id">),
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // addSubject
 // Adiciona uma nova disciplina na coleção `subjects` e retorna o objeto
