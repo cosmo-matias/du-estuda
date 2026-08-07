@@ -41,11 +41,11 @@ function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-60 flex-col bg-emerald-900 text-emerald-50 shrink-0">
+    <aside className="flex h-full w-60 flex-col bg-slate-950 text-slate-50 shrink-0">
       {/* Logo / Brand */}
-      <div className="flex items-center gap-2 px-6 py-5 border-b border-emerald-800">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-400">
-          <BookOpen className="h-4 w-4 text-emerald-900" />
+      <div className="flex items-center gap-2 px-6 py-5 border-b border-slate-900">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
+          <BookOpen className="h-4 w-4 text-white" />
         </div>
         <span className="text-lg font-bold tracking-tight">DuEstuda</span>
       </div>
@@ -64,8 +64,8 @@ function Sidebar() {
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-emerald-700 text-white"
-                      : "text-emerald-200 hover:bg-emerald-800 hover:text-white"
+                      ? "bg-indigo-600 text-white"
+                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
@@ -78,8 +78,8 @@ function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-emerald-800">
-        <p className="text-xs text-emerald-400 text-center">
+      <div className="px-4 py-4 border-t border-slate-900">
+        <p className="text-xs text-slate-500 text-center">
           © 2025 DuEstuda
         </p>
       </div>
@@ -108,11 +108,11 @@ function Topbar({ title = "Dashboard" }: TopbarProps) {
         >
           <Bell className="h-5 w-5" />
           {/* Unread dot */}
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-white" />
+          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-indigo-600 ring-2 ring-white" />
         </button>
 
         <Avatar className="h-8 w-8 cursor-pointer">
-          <AvatarFallback className="bg-emerald-700 text-white text-xs font-semibold">
+          <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs font-semibold">
             DU
           </AvatarFallback>
         </Avatar>
