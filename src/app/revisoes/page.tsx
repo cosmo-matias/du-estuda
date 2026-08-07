@@ -1,34 +1,63 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PlayCircle, CheckCircle, XCircle, RotateCcw, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { getReviews, updateReviewStatus } from "@/services/reviewService";
-import type { Review } from "@/types";
+import { useRouter } from "next/navigation";
+import { Loader2, CheckCircle, CalendarClock, BrainCircuit } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
+import { getPendingReviewsByPlan, completeReview } from "@/services/reviewService";
+import { getSubjectsByPlan } from "@/services/planSubjectService";
+import type { Review } from "@/types";
+import { Button } from "@/components/ui/button";
 
-// ---------------------------------------------------------------------------
-// Page Component
-// ---------------------------------------------------------------------------
+interface ReviewWithSubject extends Review {
+  subjectTitle: string;
+  subjectColor: string;
+}
+
 export default function RevisoesPage() {
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { user }              = useAuth();
+  const router = useRouter();
+  const { user } = useAuth();
+  const { activePlan } = usePlan();
 
-  // -------------------------------------------------------------------------
-  // Fetch Reviews
-  // -------------------------------------------------------------------------
+  const [reviews, setReviews] = useState<ReviewWithSubject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchReviews() {
-      if (!user) return;
+    async function loadReviews() {
+      if (!user || !activePlan) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
-        const data = await getReviews(user.uid);
-        if (!cancelled) setReviews(data);
+        const [fetchedReviews, fetchedSubjects] = await Promise.all([
+          getPendingReviewsByPlan(user.uid, activePlan.id),
+          getSubjectsByPlan(activePlan.id)
+        ]);
+        
+        if (!cancelled) {
+          const today = new Date();
+          // Filter to only show reviews scheduled for today or earlier
+          const activeReviews = fetchedReviews
+            .filter(r => new Date(r.scheduledDate) <= today)
+            .map(r => {
+              const subject = fetchedSubjects.find(s => s.subjectId === r.subjectId);
+              return {
+                ...r,
+                subjectTitle: subject?.subjectTitle || "Disciplina Desconhecida",
+                subjectColor: subject?.subjectColor || "#94a3b8"
+              };
+            });
+            
+          // Sort by oldest first
+          activeReviews.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime());
+          
+          setReviews(activeReviews);
+        }
       } catch (err) {
         console.error("Erro ao carregar revisões:", err);
       } finally {
@@ -36,191 +65,146 @@ export default function RevisoesPage() {
       }
     }
 
-    fetchReviews();
+    loadReviews();
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, activePlan]);
 
-  // -------------------------------------------------------------------------
-  // Handlers
-  // -------------------------------------------------------------------------
-  async function handleStatusChange(id: string, newStatus: 'completed' | 'ignored') {
+  async function handleCompleteReview(reviewId: string) {
     try {
-      // Optimistic update
-      setReviews((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
-      );
-      // Persist to Firestore
-      await updateReviewStatus(id, newStatus);
+      setCompletingId(reviewId);
+      await completeReview(reviewId);
+      
+      // Remove from UI with a slight delay for the animation
+      setTimeout(() => {
+        setReviews(prev => prev.filter(r => r.id !== reviewId));
+        setCompletingId(null);
+      }, 300);
+      
     } catch (err) {
-      console.error("Erro ao atualizar status:", err);
-      // Revert on error could be implemented here
+      console.error("Erro ao completar revisão:", err);
+      setCompletingId(null);
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Derived state
-  // -------------------------------------------------------------------------
-  const pendingReviews   = reviews.filter((r) => r.status === "pending");
-  const completedReviews = reviews.filter((r) => r.status === "completed");
-  const ignoredReviews   = reviews.filter((r) => r.status === "ignored");
-  // Assuming 'atrasadas' requires logic based on scheduledFor vs today.
-  // For now, let's keep it empty or mock it if needed.
-  const delayedReviews: Review[] = []; 
+  if (loading) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
 
-  // -------------------------------------------------------------------------
-  // Render Item Helper
-  // -------------------------------------------------------------------------
-  const renderReviewItem = (review: Review, showActions: boolean = false) => (
-    <Card key={review.id} className="overflow-hidden hover:shadow-sm transition-shadow">
-      <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        {/* Left info */}
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          {/* Cycle Badge */}
-          <div className="flex flex-col items-center justify-center bg-indigo-50 text-indigo-700 rounded-lg px-3 py-2 min-w-[70px] text-center border border-indigo-100">
-            <RotateCcw className="w-4 h-4 mb-1" />
-            <span className="text-xs font-bold whitespace-nowrap">{review.cycle}</span>
-          </div>
-
-          {/* Text content */}
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 tracking-wider">
-                {review.category}
-              </span>
-              <span className="text-xs text-slate-500 font-medium">
-                Agendado:{" "}
-                <span className={review.scheduledFor === "HOJE" ? "text-amber-600 font-bold" : ""}>
-                  {String(review.scheduledFor)}
-                </span>
-              </span>
-            </div>
-            <h3 className="font-semibold text-slate-900 line-clamp-1">{review.subjectTitle}</h3>
-            <p className="text-sm text-slate-500 line-clamp-1">{review.topicTitle}</p>
-          </div>
-        </div>
-
-        {/* Actions */}
-        {showActions && (
-          <div className="flex items-center gap-2 self-end sm:self-auto w-full sm:w-auto justify-end mt-2 sm:mt-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-slate-400 hover:text-red-500 hover:bg-red-50"
-              onClick={() => handleStatusChange(review.id, "ignored")}
-            >
-              <XCircle className="w-5 h-5" />
-              <span className="sr-only">Ignorar</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-slate-400 hover:text-emerald-500 hover:bg-emerald-50"
-              onClick={() => handleStatusChange(review.id, "completed")}
-            >
-              <CheckCircle className="w-5 h-5" />
-              <span className="sr-only">Concluir</span>
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-4"
-            >
-              <PlayCircle className="w-4 h-4" />
-              <span>Estudar</span>
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+  if (!activePlan) {
+    return (
+      <div className="flex h-[calc(100vh-4rem)] flex-col items-center justify-center gap-4 px-4 text-center">
+        <p className="text-lg text-slate-500">
+          Nenhum plano selecionado.
+        </p>
+        <Button onClick={() => router.push("/planos")}>
+          Ver Meus Planos
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex h-full flex-col p-4 md:p-8 max-w-5xl mx-auto w-full gap-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Revisões</h1>
-        <p className="text-muted-foreground mt-1">
-          Gerencie seu ciclo de repetições espaçadas.
-        </p>
+    <div className="flex flex-col gap-8 max-w-4xl mx-auto w-full pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
+        <div className="absolute top-0 left-0 h-full w-1.5 bg-indigo-600" />
+        <div className="flex flex-col pl-4">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+            <BrainCircuit className="h-7 w-7 text-indigo-600" />
+            Revisões Pendentes
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Revisões espaçadas agendadas automaticamente para otimizar sua retenção de memória.
+          </p>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="programadas" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
-          <TabsTrigger value="programadas" className="py-2.5 text-xs sm:text-sm">
-            PROGRAMADAS
-          </TabsTrigger>
-          <TabsTrigger value="atrasadas" className="py-2.5 text-xs sm:text-sm">
-            ATRASADAS
-          </TabsTrigger>
-          <TabsTrigger value="ignoradas" className="py-2.5 text-xs sm:text-sm">
-            IGNORADAS
-          </TabsTrigger>
-          <TabsTrigger value="concluidas" className="py-2.5 text-xs sm:text-sm">
-            CONCLUÍDAS
-          </TabsTrigger>
-        </TabsList>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        {reviews.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 text-center gap-4">
+            <div className="p-4 bg-emerald-50 rounded-full">
+              <CheckCircle className="h-8 w-8 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-lg font-medium text-slate-800">Tudo em dia!</p>
+              <p className="text-sm text-slate-500 mt-1">
+                Você não possui revisões pendentes para hoje no plano <strong>{activePlan.title}</strong>.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {reviews.map(review => {
+              const isCompleting = completingId === review.id;
+              
+              let stepLabel = "Revisão de 24h";
+              if (review.step === 2) stepLabel = "Revisão de 7 dias";
+              else if (review.step === 3) stepLabel = "Revisão de 30 dias";
+              
+              const isLate = new Date(review.scheduledDate).toLocaleDateString() !== new Date().toLocaleDateString();
 
-        <div className="mt-6">
-          <TabsContent value="programadas" className="m-0 flex flex-col gap-3">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              </div>
-            ) : pendingReviews.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground border rounded-lg border-dashed">
-                Nenhuma revisão programada.
-              </div>
-            ) : (
-              pendingReviews.map((r) => renderReviewItem(r, true))
-            )}
-          </TabsContent>
-
-          <TabsContent value="atrasadas" className="m-0 flex flex-col gap-3">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              </div>
-            ) : delayedReviews.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground border rounded-lg border-dashed">
-                Nenhuma revisão atrasada. Tudo em dia! 🎉
-              </div>
-            ) : (
-              delayedReviews.map((r) => renderReviewItem(r, false))
-            )}
-          </TabsContent>
-
-          <TabsContent value="ignoradas" className="m-0 flex flex-col gap-3">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              </div>
-            ) : ignoredReviews.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground border rounded-lg border-dashed">
-                Nenhuma revisão ignorada.
-              </div>
-            ) : (
-              ignoredReviews.map((r) => renderReviewItem(r, false))
-            )}
-          </TabsContent>
-
-          <TabsContent value="concluidas" className="m-0 flex flex-col gap-3">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              </div>
-            ) : completedReviews.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground border rounded-lg border-dashed">
-                Revisões concluídas aparecerão aqui.
-              </div>
-            ) : (
-              completedReviews.map((r) => renderReviewItem(r, false))
-            )}
-          </TabsContent>
-        </div>
-      </Tabs>
+              return (
+                <div 
+                  key={review.id} 
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 gap-4 transition-all duration-300 ${
+                    isCompleting ? "opacity-0 translate-x-8" : "hover:bg-slate-50"
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div 
+                      className="w-1.5 h-12 rounded-full shrink-0" 
+                      style={{ backgroundColor: review.subjectColor }}
+                    />
+                    <div className="flex flex-col gap-1.5">
+                      <h3 className="font-semibold text-slate-800 text-lg">
+                        {review.subjectTitle}
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
+                          {stepLabel}
+                        </span>
+                        
+                        {isLate ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                            <CalendarClock className="h-3 w-3" />
+                            Atrasada
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/10">
+                            <CalendarClock className="h-3 w-3" />
+                            Hoje
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={() => handleCompleteReview(review.id)}
+                    disabled={isCompleting}
+                    variant="outline"
+                    className="group border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors shrink-0"
+                  >
+                    {isCompleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                        Marcar como Feita
+                      </>
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

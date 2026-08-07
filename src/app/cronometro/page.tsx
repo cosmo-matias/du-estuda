@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { addStudySession } from "@/services/sessionService";
 import { updatePlan } from "@/services/studyPlanService";
+import { addReview } from "@/services/reviewService";
 import { getSubjectsByPlan } from "@/services/planSubjectService";
 import { getTopicsBySubject } from "@/services/topicService";
 import type { Topic, StudyCategory } from "@/types";
@@ -348,6 +349,21 @@ function CronometroContent() {
           setActivePlan({ ...activePlan, currentCyclePosition: nextPos });
         }
       }
+
+      // -------------------------------------------------------------
+      // Agendamento Automático de Revisão (24h)
+      // -------------------------------------------------------------
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      await addReview({
+        userId: user!.uid,
+        planId: activePlan!.id,
+        subjectId: selectedSubject,
+        scheduledDate: tomorrow.toISOString(),
+        completed: false,
+        step: 1
+      });
 
       setIsDialogOpen(false);
       resetTimer();

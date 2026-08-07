@@ -115,10 +115,9 @@ export interface StudySession {
 export interface Review {
   id: string;
   userId: string;
-  subjectTitle: string;
-  topicTitle: string;
-  cycle: string;
-  category: string;
-  scheduledFor: string | Date;
-  status: 'pending' | 'completed' | 'ignored';
+  planId: string;
+  subjectId: string;
+  scheduledDate: string;
+  completed: boolean;
+  step: number;
 }
