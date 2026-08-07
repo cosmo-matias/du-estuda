@@ -15,6 +15,8 @@ import {
   Bell,
   LogOut,
   Loader2,
+  Folder,
+  Library,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -28,8 +30,8 @@ import { auth } from "@/lib/firebase";
 const navItems = [
   { label: "Home",         href: "/",             icon: Home },
   { label: "Cronômetro",   href: "/cronometro",   icon: Timer },
-  { label: "Planos",       href: "/planos",       icon: BookOpen },
-  { label: "Disciplinas",  href: "/disciplinas",  icon: Layers },
+  { label: "Planos",       href: "/planos",       icon: Folder },
+  { label: "Disciplinas",  href: "/disciplinas",  icon: Library },
   { label: "Planejamento", href: "/planejamento", icon: CalendarDays },
   { label: "Revisões",     href: "/revisoes",     icon: RefreshCcw },
   { label: "Histórico",    href: "/historico",    icon: History },

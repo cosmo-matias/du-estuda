@@ -16,17 +16,16 @@ export interface User {
 }
 
 // -----------------------------------------------------------------------------
-// Plan
+// StudyPlan
 // Um plano de estudos vinculado a um usuário.
 // Exemplo: "Plano PCDF 2025", "Plano Receita Federal".
 // -----------------------------------------------------------------------------
-export interface Plan {
+export interface StudyPlan {
   id: string;
   userId: string;
   title: string;
-  /** Data-alvo da prova (opcional, pois o plano pode ser aberto) */
-  targetDate?: Date;
-  createdAt: Date;
+  targetDate: string;
+  active: boolean;
 }
 
 // -----------------------------------------------------------------------------
