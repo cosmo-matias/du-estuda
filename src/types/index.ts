@@ -98,6 +98,7 @@ export interface StudySession {
   category: StudyCategory;
   /** Quantidade de questões respondidas (opcional) */
   questionsAnswered?: number;
+  questionsTotal?: number;
   /** Quantidade de questões corretas (opcional) */
   questionsCorrect?: number;
   /** Páginas lidas na sessão (opcional) */

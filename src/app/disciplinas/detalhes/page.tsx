@@ -79,6 +79,22 @@ function SubjectDashboardContent() {
     return Math.round((completed / topics.length) * 100);
   }, [topics]);
 
+  const { totalQuestions, totalCorrect, accuracyPercent } = useMemo(() => {
+    let qTotal = 0;
+    let qCorrect = 0;
+    sessions.forEach(s => {
+      qTotal += s.questionsTotal || 0;
+      qCorrect += s.questionsCorrect || 0;
+    });
+    
+    let acc = 0;
+    if (qTotal > 0) {
+      acc = Math.round((qCorrect / qTotal) * 100);
+    }
+    
+    return { totalQuestions: qTotal, totalCorrect: qCorrect, accuracyPercent: acc };
+  }, [sessions]);
+
   const chartData = useMemo(() => {
     const grouped: Record<string, number> = {};
     sessions.forEach((s) => {
@@ -204,8 +220,10 @@ function SubjectDashboardContent() {
             <Target className="h-5 w-5 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-slate-900">85%</div>
-            <p className="text-xs text-emerald-600 font-medium mt-1">102 acertos / 18 erros (Mock)</p>
+            <div className="text-3xl font-bold text-slate-900">{accuracyPercent}%</div>
+            <p className="text-xs text-emerald-600 font-medium mt-1">
+              {totalCorrect} acertos / {totalQuestions - totalCorrect} erros
+            </p>
           </CardContent>
         </Card>
 
@@ -279,8 +297,10 @@ function SubjectDashboardContent() {
                           <p className="text-sm font-semibold text-slate-700">{formatDuration(session.durationInSeconds)}</p>
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Acertos</p>
-                          <p className="text-sm font-semibold text-emerald-600">0/0</p>
+                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Acertos/Total</p>
+                          <p className="text-sm font-semibold text-emerald-600">
+                            {session.questionsCorrect || 0}/{session.questionsTotal || 0}
+                          </p>
                         </div>
                       </div>
                     </div>

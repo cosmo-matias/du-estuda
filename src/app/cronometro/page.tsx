@@ -125,7 +125,7 @@ function CronometroContent() {
   // Session dialog                                                          //
   // ---------------------------------------------------------------------- //
   const [isDialogOpen, setIsDialogOpen]           = useState(false);
-  const [questionsAnswered, setQuestionsAnswered] = useState("");
+  const [questionsTotal, setQuestionsTotal]       = useState("");
   const [questionsCorrect, setQuestionsCorrect]   = useState("");
   const [pagesRead, setPagesRead]                 = useState("");
   const [notes, setNotes]                         = useState("");
@@ -295,7 +295,7 @@ function CronometroContent() {
   // Session dialog helpers                                                  //
   // ---------------------------------------------------------------------- //
   function openSessionDialog() {
-    setQuestionsAnswered("");
+    setQuestionsTotal("");
     setQuestionsCorrect("");
     setPagesRead("");
     setNotes("");
@@ -326,7 +326,7 @@ function CronometroContent() {
         date:              new Date(),
         durationInSeconds: elapsedSeconds,
         category:          (selectedCategory as StudyCategory) || "Teoria",
-        questionsAnswered: safeInt(questionsAnswered),
+        questionsTotal:    safeInt(questionsTotal),
         questionsCorrect:  safeInt(questionsCorrect),
         pagesRead:         safeInt(pagesRead),
         notes:             notes.trim() || undefined,
@@ -702,18 +702,18 @@ function CronometroContent() {
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label
-                  htmlFor="input-questions-answered"
+                  htmlFor="input-questions-total"
                   className="block text-xs font-medium text-slate-600"
                 >
-                  Questões
+                  Total de Questões
                 </label>
                 <Input
-                  id="input-questions-answered"
+                  id="input-questions-total"
                   type="number"
                   min="0"
                   placeholder="0"
-                  value={questionsAnswered}
-                  onChange={(e) => setQuestionsAnswered(e.target.value)}
+                  value={questionsTotal}
+                  onChange={(e) => setQuestionsTotal(e.target.value)}
                 />
               </div>
               <div className="space-y-1">
