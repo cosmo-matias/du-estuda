@@ -380,7 +380,13 @@ export default function CronometroPage() {
             }}
           >
             <SelectTrigger id="select-disciplina" className="flex-1 bg-white">
-              <SelectValue placeholder="Selecione a disciplina…" />
+              <SelectValue placeholder="Selecione a disciplina…">
+                {/* Explicit title — prevents Base UI from falling back to the raw ID
+                    when subjects are still loading (async Firestore fetch). */}
+                {selectedSubject
+                  ? (subjects.find((s) => s.id === selectedSubject)?.title ?? undefined)
+                  : undefined}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {loadingSubjects ? (
@@ -433,7 +439,12 @@ export default function CronometroPage() {
                   ? "Carregando tópicos…"
                   : "Selecione o tópico (opcional)…"
               }
-            />
+            >
+              {/* Explicit title — same reason as Disciplina above. */}
+              {selectedTopic
+                ? (topics.find((t) => t.id === selectedTopic)?.title ?? undefined)
+                : undefined}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             {loadingTopics ? (
