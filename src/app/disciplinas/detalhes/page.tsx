@@ -3,13 +3,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
-import { Play, Clock, Target, CheckCircle, ArrowLeft, Loader2 } from "lucide-react";
+import { Play, Clock, Target, CheckCircle, ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getSubjectById } from "@/services/planService";
 import { getSessionsBySubject } from "@/services/sessionService";
-import { getTopicsBySubject, addTopic } from "@/services/topicService";
+import { getTopicsBySubject, addTopic, deleteTopic } from "@/services/topicService";
 import type { Subject, StudySession, Topic } from "@/types";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
@@ -113,6 +113,17 @@ function SubjectDashboardContent() {
       console.error("Erro ao adicionar tópico:", err);
     } finally {
       setAddingTopic(false);
+    }
+  }
+
+  async function handleDeleteTopic(topicId: string) {
+    if (!window.confirm("Tem certeza que deseja excluir este tópico?")) return;
+    try {
+      setTopics((prev) => prev.filter((t) => t.id !== topicId));
+      await deleteTopic(topicId);
+    } catch (err) {
+      console.error("Erro ao excluir tópico:", err);
+      alert("Ocorreu um erro ao excluir o tópico.");
     }
   }
 
@@ -319,6 +330,15 @@ function SubjectDashboardContent() {
                           />
                         </div>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteTopic(topic.id)}
+                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 h-8 w-8 ml-2"
+                        title="Excluir Tópico"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   ))}
                 </div>

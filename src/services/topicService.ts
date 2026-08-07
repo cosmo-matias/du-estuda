@@ -5,6 +5,8 @@ import {
   getDocs,
   addDoc,
   serverTimestamp,
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Topic } from "@/types";
@@ -40,4 +42,12 @@ export async function addTopic(topic: Omit<Topic, "id">): Promise<Topic> {
   });
 
   return { id: docRef.id, ...topic };
+}
+
+// ---------------------------------------------------------------------------
+// deleteTopic
+// ---------------------------------------------------------------------------
+export async function deleteTopic(topicId: string): Promise<void> {
+  const docRef = doc(db, "topics", topicId);
+  await deleteDoc(docRef);
 }
