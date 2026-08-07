@@ -21,6 +21,7 @@ import {
 import { SubjectCard } from "@/components/planos/SubjectCard";
 import { getSubjects, addSubject } from "@/services/planService";
 import type { Subject } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -50,6 +51,7 @@ export default function PlanosPage() {
   const [subjects, setSubjects]       = useState<Subject[]>([]);
   const [loading, setLoading]         = useState(true);
   const [dialogOpen, setDialogOpen]   = useState(false);
+  const { user }                      = useAuth();
 
   // Form state
   const [newTitle, setNewTitle]       = useState("");
@@ -64,9 +66,10 @@ export default function PlanosPage() {
     let cancelled = false;
 
     async function fetchSubjects() {
+      if (!user) return;
       try {
         setLoading(true);
-        const data = await getSubjects(PLAN_ID);
+        const data = await getSubjects(user.uid, PLAN_ID);
         if (!cancelled) setSubjects(data);
       } catch (err) {
         console.error("Erro ao buscar disciplinas:", err);
@@ -77,7 +80,7 @@ export default function PlanosPage() {
 
     fetchSubjects();
     return () => { cancelled = true; };
-  }, []);
+  }, [user]);
 
   // -------------------------------------------------------------------------
   // Open / close dialog helpers
@@ -110,6 +113,7 @@ export default function PlanosPage() {
 
       const created = await addSubject({
         planId: PLAN_ID,
+        userId: user!.uid,
         title:  trimmedTitle,
         color:  newColor,
       });

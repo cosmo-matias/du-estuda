@@ -37,6 +37,7 @@ export interface Plan {
 export interface Subject {
   id: string;
   planId: string;
+  userId: string;
   title: string;
   /** Cor em HEX ou Tailwind para identificação visual na UI */
   color: string;

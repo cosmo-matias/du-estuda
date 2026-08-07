@@ -17,6 +17,7 @@ import {
 import { getAllStudySessions } from "@/services/sessionService";
 import { getSubjects } from "@/services/planService";
 import type { StudySession, Subject } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Constants & Mocks
@@ -49,6 +50,7 @@ export default function DashboardPage() {
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user }              = useAuth();
 
   // -------------------------------------------------------------------------
   // Fetch Data
@@ -56,11 +58,12 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadData() {
+      if (!user) return;
       try {
         setLoading(true);
         const [fetchedSessions, fetchedSubjects] = await Promise.all([
-          getAllStudySessions(),
-          getSubjects(PROVISIONAL_PLAN_ID),
+          getAllStudySessions(user.uid),
+          getSubjects(user.uid, PROVISIONAL_PLAN_ID),
         ]);
         if (!cancelled) {
           setSessions(fetchedSessions);
@@ -76,7 +79,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user]);
 
   // -------------------------------------------------------------------------
   // Aggregations (useMemo)

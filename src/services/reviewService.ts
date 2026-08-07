@@ -1,6 +1,7 @@
 import {
   collection,
   query,
+  where,
   getDocs,
   doc,
   updateDoc,
@@ -15,10 +16,10 @@ const reviewsRef = collection(db, "reviews");
 
 // ---------------------------------------------------------------------------
 // getReviews
-// Busca todas as revisões (sem filtro de usuário no momento).
+// Busca todas as revisões de um usuário específico.
 // ---------------------------------------------------------------------------
-export async function getReviews(): Promise<Review[]> {
-  const q = query(reviewsRef);
+export async function getReviews(userId: string): Promise<Review[]> {
+  const q = query(reviewsRef, where("userId", "==", userId));
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((doc) => ({

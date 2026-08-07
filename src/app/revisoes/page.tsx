@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { getReviews, updateReviewStatus } from "@/services/reviewService";
 import type { Review } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Page Component
@@ -14,6 +15,7 @@ import type { Review } from "@/types";
 export default function RevisoesPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user }              = useAuth();
 
   // -------------------------------------------------------------------------
   // Fetch Reviews
@@ -22,9 +24,10 @@ export default function RevisoesPage() {
     let cancelled = false;
 
     async function fetchReviews() {
+      if (!user) return;
       try {
         setLoading(true);
-        const data = await getReviews();
+        const data = await getReviews(user.uid);
         if (!cancelled) setReviews(data);
       } catch (err) {
         console.error("Erro ao carregar revisões:", err);
@@ -37,7 +40,7 @@ export default function RevisoesPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user]);
 
   // -------------------------------------------------------------------------
   // Handlers

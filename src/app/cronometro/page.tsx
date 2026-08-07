@@ -24,6 +24,7 @@ import { addStudySession } from "@/services/sessionService";
 import { getSubjects } from "@/services/planService";
 import { getTopicsBySubject } from "@/services/topicService";
 import type { Subject, Topic, StudyCategory } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -84,6 +85,7 @@ export default function CronometroPage() {
   // ---------------------------------------------------------------------- //
   const [mode, setMode]                       = useState<TimerMode>("free");
   const [pomodoroDuration, setPomodoroDuration] = useState<number>(25);
+  const { user }                              = useAuth();
 
   // ---------------------------------------------------------------------- //
   // Timer                                                                   //
@@ -182,9 +184,10 @@ export default function CronometroPage() {
     let cancelled = false;
 
     async function fetchSubjects() {
+      if (!user) return;
       try {
         setLoadingSubjects(true);
-        const data = await getSubjects(PROVISIONAL_PLAN_ID);
+        const data = await getSubjects(user.uid, PROVISIONAL_PLAN_ID);
         if (!cancelled) setSubjects(data);
       } catch (err) {
         console.error("Erro ao carregar disciplinas:", err);
@@ -195,7 +198,7 @@ export default function CronometroPage() {
 
     fetchSubjects();
     return () => { cancelled = true; };
-  }, []);
+  }, [user]);
 
   // ---------------------------------------------------------------------- //
   // Load topics from Firestore when selected subject changes                //
@@ -287,7 +290,7 @@ export default function CronometroPage() {
       setSaveError("");
 
       const sessionPayload = {
-        userId:            PLACEHOLDER_USER_ID,
+        userId:            user!.uid,
         subjectId:         selectedSubject,
         topicId:           selectedTopic || undefined,
         date:              new Date(),

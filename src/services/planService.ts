@@ -16,10 +16,10 @@ const subjectsRef = collection(db, "subjects");
 
 // ---------------------------------------------------------------------------
 // getSubjects
-// Busca todas as disciplinas de um plano específico no Firestore.
+// Busca todas as disciplinas de um plano específico no Firestore, filtrando por usuário.
 // ---------------------------------------------------------------------------
-export async function getSubjects(planId: string): Promise<Subject[]> {
-  const q = query(subjectsRef, where("planId", "==", planId));
+export async function getSubjects(userId: string, planId: string): Promise<Subject[]> {
+  const q = query(subjectsRef, where("userId", "==", userId), where("planId", "==", planId));
   const snapshot = await getDocs(q);
 
   return snapshot.docs.map((doc) => ({
