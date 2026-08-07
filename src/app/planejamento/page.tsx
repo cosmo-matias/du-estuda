@@ -106,13 +106,15 @@ export default function PlanejamentoPage() {
           return (
             <div
               key={`${item.id}-${index}`}
-              className={`flex flex-col justify-between rounded-xl border bg-white p-5 shadow-sm transition-all hover:shadow-md relative overflow-hidden group ${
-                isCurrent ? "ring-2 ring-offset-2" : ""
+              className={`flex flex-col justify-between rounded-xl border bg-white p-5 transition-all duration-500 ease-in-out relative overflow-hidden group ${
+                isCurrent 
+                  ? "scale-105 shadow-xl ring-4 z-10 opacity-100" 
+                  : "scale-95 opacity-60 grayscale-[30%] shadow-sm hover:opacity-80 hover:grayscale-0"
               }`}
-              style={{ borderColor: color, ...(isCurrent ? { ringColor: color } : {}) }}
+              style={{ borderColor: color, ...(isCurrent ? { ringColor: `${color}40` } : {}) }}
             >
               <div 
-                className={`absolute top-0 left-0 h-full w-1.5 opacity-70 group-hover:opacity-100 transition-opacity ${isCurrent ? "opacity-100" : ""}`} 
+                className={`absolute top-0 left-0 h-full w-1.5 opacity-70 transition-opacity duration-500 ${isCurrent ? "opacity-100" : "group-hover:opacity-100"}`} 
                 style={{ backgroundColor: color }} 
               />
               
