@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, Target, TrendingUp, Check, X, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Clock, Target, TrendingUp, Check, X, Loader2, Trash2 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -14,7 +15,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { getAllStudySessions } from "@/services/sessionService";
+import { getAllStudySessions, deleteStudySession } from "@/services/sessionService";
 import { getSubjects } from "@/services/planService";
 import type { StudySession, Subject } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -150,6 +151,32 @@ export default function DashboardPage() {
       };
     }).filter(item => item.value > 0);
   }, [sessions, subjects]);
+
+  // 4. Últimas sessões
+  const recentSessions = useMemo(() => {
+    return [...sessions]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [sessions]);
+
+  // -------------------------------------------------------------------------
+  // Handlers
+  // -------------------------------------------------------------------------
+  async function handleDeleteSession(sessionId: string) {
+    if (!window.confirm("Tem certeza que deseja excluir esta sessão de estudo? Esta ação não pode ser desfeita.")) {
+      return;
+    }
+
+    try {
+      // Optimistic local update
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      await deleteStudySession(sessionId);
+    } catch (error) {
+      console.error("Erro ao excluir sessão:", error);
+      alert("Ocorreu um erro ao excluir a sessão. A página será recarregada.");
+      window.location.reload();
+    }
+  }
 
   // -------------------------------------------------------------------------
   // Render
@@ -339,6 +366,67 @@ export default function DashboardPage() {
         </Card>
       </div>
 
+      {/* Section 4: Últimas Sessões */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg text-slate-800">Últimas Sessões</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {recentSessions.length === 0 ? (
+            <div className="flex items-center justify-center py-6 text-sm text-slate-500 border-2 border-dashed rounded-lg">
+              Nenhuma sessão registrada.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentSessions.map((session) => {
+                const subject = subjects.find((s) => s.id === session.subjectId);
+                const sessionDate = new Date(session.date).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric"
+                });
+
+                return (
+                  <div 
+                    key={session.id} 
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition-colors gap-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-2 h-10 rounded-full" 
+                        style={{ backgroundColor: subject?.color || "#cbd5e1" }}
+                      />
+                      <div>
+                        <p className="font-medium text-slate-800 text-sm">
+                          {subject?.title || "Disciplina Desconhecida"}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {sessionDate} • {session.category}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between sm:justify-end gap-4">
+                      <span className="text-sm font-semibold text-slate-700 bg-slate-100 px-3 py-1 rounded-md">
+                        {formatDuration(session.durationInSeconds)}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteSession(session.id)}
+                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 h-8 w-8"
+                        title="Excluir Sessão"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

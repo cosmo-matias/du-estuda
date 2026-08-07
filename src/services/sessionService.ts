@@ -5,6 +5,8 @@ import {
   getDocs,
   query,
   where,
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { StudySession } from "@/types";
@@ -59,4 +61,12 @@ export async function getAllStudySessions(userId: string): Promise<StudySession[
     id: doc.id,
     ...(doc.data() as Omit<StudySession, "id">),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// deleteStudySession
+// ---------------------------------------------------------------------------
+export async function deleteStudySession(sessionId: string): Promise<void> {
+  const docRef = doc(db, "studySessions", sessionId);
+  await deleteDoc(docRef);
 }
