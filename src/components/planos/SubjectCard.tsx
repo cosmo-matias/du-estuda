@@ -20,7 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getTopicsBySubject, addTopic } from "@/services/topicService";
+import { getTopicsByPlanAndSubject, addTopic } from "@/services/topicService";
+import { usePlan } from "@/contexts/PlanContext";
 import type { Subject, Topic } from "@/types";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +51,7 @@ interface SubjectCardProps {
 }
 
 export function SubjectCard({ subject }: SubjectCardProps) {
+  const { activePlan } = usePlan();
   // Safe fallbacks for values coming from Firestore
   const title = subject?.title?.trim() || "Disciplina sem nome";
   const color = subject?.color?.trim() || "#94a3b8";
@@ -74,9 +76,10 @@ export function SubjectCard({ subject }: SubjectCardProps) {
     let cancelled = false;
 
     async function fetchTopics() {
+      if (!activePlan) return;
       try {
         setIsLoading(true);
-        const data = await getTopicsBySubject(subject.id);
+        const data = await getTopicsByPlanAndSubject(activePlan.id, subject.id);
         if (!cancelled) setTopics(data);
       } catch (err) {
         console.error("Erro ao carregar tópicos:", err);
@@ -101,6 +104,10 @@ export function SubjectCard({ subject }: SubjectCardProps) {
   // Add topic handler
   // -------------------------------------------------------------------------
   async function handleAddTopic() {
+    if (!activePlan) {
+      setInputError("Selecione um plano primeiro.");
+      return;
+    }
     const trimmed = newTopicTitle.trim();
     if (!trimmed) {
       setInputError("Digite o nome do tópico.");
@@ -112,6 +119,7 @@ export function SubjectCard({ subject }: SubjectCardProps) {
       setInputError("");
 
       const created = await addTopic({
+        planId: activePlan.id,
         subjectId:   subject.id,
         title:       trimmed,
         isCompleted: false,

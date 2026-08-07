@@ -61,6 +61,7 @@ export interface PlanSubject {
 // -----------------------------------------------------------------------------
 export interface Topic {
   id: string;
+  planId: string;
   subjectId: string;
   title: string;
   /** Indica se o tópico foi concluído pelo estudante */

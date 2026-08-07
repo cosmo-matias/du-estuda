@@ -7,9 +7,10 @@ import { Play, Clock, Target, CheckCircle, ArrowLeft, Loader2, Trash2 } from "lu
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 import { getSubjectById } from "@/services/planService";
-import { getSessionsBySubject } from "@/services/sessionService";
-import { getTopicsBySubject, addTopic, deleteTopic } from "@/services/topicService";
+import { getSessionsByPlan } from "@/services/sessionService";
+import { getTopicsByPlanAndSubject, addTopic, deleteTopic } from "@/services/topicService";
 import type { Subject, StudySession, Topic } from "@/types";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
@@ -25,6 +26,7 @@ function SubjectDashboardContent() {
   const id = searchParams.get("id");
   const router = useRouter();
   const { user } = useAuth();
+  const { activePlan } = usePlan();
 
   const [subject, setSubject] = useState<Subject | null>(null);
   const [sessions, setSessions] = useState<StudySession[]>([]);
@@ -37,18 +39,21 @@ function SubjectDashboardContent() {
   useEffect(() => {
     let cancelled = false;
     async function loadData() {
-      if (!user || !id) return;
+      if (!user || !id || !activePlan) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         const [fetchedSubject, fetchedSessions, fetchedTopics] = await Promise.all([
           getSubjectById(id),
-          getSessionsBySubject(user.uid, id),
-          getTopicsBySubject(id),
+          getSessionsByPlan(user.uid, activePlan.id),
+          getTopicsByPlanAndSubject(activePlan.id, id),
         ]);
 
         if (!cancelled) {
           setSubject(fetchedSubject);
-          setSessions(fetchedSessions);
+          setSessions(fetchedSessions.filter(s => s.subjectId === id));
           setTopics(fetchedTopics);
         }
       } catch (err) {
@@ -61,7 +66,7 @@ function SubjectDashboardContent() {
     return () => {
       cancelled = true;
     };
-  }, [user, id]);
+  }, [user, id, activePlan]);
 
   const totalStudyTime = useMemo(() => {
     const totalSeconds = sessions.reduce((acc, s) => acc + s.durationInSeconds, 0);
@@ -98,11 +103,12 @@ function SubjectDashboardContent() {
 
   async function handleAddTopic(e: React.FormEvent) {
     e.preventDefault();
-    if (!newTopic.trim() || !subject) return;
+    if (!newTopic.trim() || !subject || !activePlan) return;
 
     try {
       setAddingTopic(true);
       const added = await addTopic({
+        planId: activePlan.id,
         subjectId: subject.id,
         title: newTopic.trim(),
         isCompleted: false,
@@ -140,6 +146,15 @@ function SubjectDashboardContent() {
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <p className="text-lg text-slate-500">Disciplina não encontrada.</p>
         <Button onClick={() => router.push("/disciplinas")}>Voltar</Button>
+      </div>
+    );
+  }
+
+  if (!activePlan) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4">
+        <p className="text-lg text-slate-500">Nenhum plano selecionado.</p>
+        <Button onClick={() => router.push("/planos")}>Ver Planos</Button>
       </div>
     );
   }

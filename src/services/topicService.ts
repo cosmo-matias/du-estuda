@@ -17,8 +17,21 @@ import type { Topic } from "@/types";
 const topicsRef = collection(db, "topics");
 
 // ---------------------------------------------------------------------------
-// getTopicsBySubject
-// Busca todos os tópicos de uma disciplina específica no Firestore.
+// getTopicsByPlanAndSubject
+// Busca todos os tópicos de uma disciplina específica dentro de um plano.
+// ---------------------------------------------------------------------------
+export async function getTopicsByPlanAndSubject(planId: string, subjectId: string): Promise<Topic[]> {
+  const q = query(topicsRef, where("planId", "==", planId), where("subjectId", "==", subjectId));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...(doc.data() as Omit<Topic, "id">),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// getTopicsBySubject (Deprecated/Legacy - maintain for backward compatibility if needed)
 // ---------------------------------------------------------------------------
 export async function getTopicsBySubject(subjectId: string): Promise<Topic[]> {
   const q = query(topicsRef, where("subjectId", "==", subjectId));

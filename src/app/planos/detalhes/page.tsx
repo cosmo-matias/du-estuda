@@ -16,6 +16,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
+import Link from "next/link";
 import { getPlanById } from "@/services/studyPlanService";
 import { getAllSubjects } from "@/services/planService";
 import {
@@ -31,6 +33,7 @@ function PlanDetailsContent() {
   const id = searchParams.get("id");
   const router = useRouter();
   const { user } = useAuth();
+  const { setActivePlan, plans } = usePlan();
   
   const [plan, setPlan] = useState<StudyPlan | null>(null);
   const [globalSubjects, setGlobalSubjects] = useState<Subject[]>([]);
@@ -42,6 +45,14 @@ function PlanDetailsContent() {
   const [selectedSubjectId, setSelectedSubjectId] = useState("");
   const [weight, setWeight] = useState(1);
   const [proficiency, setProficiency] = useState("Iniciante");
+
+
+  useEffect(() => {
+    if (id && plans.length > 0) {
+      const p = plans.find(p => p.id === id);
+      if (p) setActivePlan(p);
+    }
+  }, [id, plans, setActivePlan]);
 
   useEffect(() => {
     let cancelled = false;
@@ -212,40 +223,61 @@ function PlanDetailsContent() {
         </Dialog>
       </div>
 
-      {/* List */}
-      <Card>
-        <CardContent className="p-0">
-          {planSubjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 text-slate-500">
-              <p>Nenhuma disciplina vinculada a este plano.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {planSubjects.map((ps) => (
-                <div key={ps.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="w-2 h-10 rounded-full" style={{ backgroundColor: ps.subjectColor || "#cbd5e1" }} />
-                    <div>
-                      <h3 className="font-semibold text-slate-800">{ps.subjectTitle}</h3>
-                      <p className="text-xs text-slate-500">
-                        Peso: {ps.weight} • Proficiência: {ps.proficiency}
-                      </p>
-                    </div>
-                  </div>
+      {/* Cards Grid */}
+      {planSubjects.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-12 text-slate-500">
+            <p>Nenhuma disciplina vinculada a este plano.</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {planSubjects.map((ps) => (
+            <Card key={ps.id} className="relative group overflow-hidden border-slate-200 hover:shadow-md transition-shadow">
+              <div 
+                className="absolute top-0 left-0 w-full h-1" 
+                style={{ backgroundColor: ps.subjectColor || "#cbd5e1" }} 
+              />
+              <CardContent className="p-5">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="font-semibold text-lg text-slate-800 line-clamp-2">
+                    {ps.subjectTitle}
+                  </h3>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="text-slate-400 hover:text-red-500 hover:bg-red-50"
-                    onClick={() => handleRemoveSubject(ps.id)}
+                    className="text-slate-400 hover:text-red-500 hover:bg-red-50 -mt-2 -mr-2 h-8 w-8 shrink-0"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleRemoveSubject(ps.id);
+                    }}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                
+                <div className="flex flex-col gap-1 mb-6 text-sm text-slate-600">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Peso:</span>
+                    <span className="font-medium">{ps.weight}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Proficiência:</span>
+                    <span className="font-medium">{ps.proficiency}</span>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/disciplinas/detalhes?id=${ps.subjectId}`}
+                  className="inline-flex w-full items-center justify-center rounded-md text-sm font-medium transition-colors border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 h-9 px-4"
+                >
+                  Abrir Painel
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
