@@ -5,6 +5,9 @@ import {
   getDocs,
   addDoc,
   serverTimestamp,
+  updateDoc,
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Subject } from "@/types";
@@ -42,4 +45,23 @@ export async function addSubject(
   });
 
   return { id: docRef.id, ...subject };
+}
+
+// ---------------------------------------------------------------------------
+// updateSubject
+// ---------------------------------------------------------------------------
+export async function updateSubject(
+  subjectId: string,
+  data: Partial<Subject>
+): Promise<void> {
+  const docRef = doc(db, "subjects", subjectId);
+  await updateDoc(docRef, data);
+}
+
+// ---------------------------------------------------------------------------
+// deleteSubject
+// ---------------------------------------------------------------------------
+export async function deleteSubject(subjectId: string): Promise<void> {
+  const docRef = doc(db, "subjects", subjectId);
+  await deleteDoc(docRef);
 }

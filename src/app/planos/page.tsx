@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, BookOpen, Loader2 } from "lucide-react";
+import { Plus, BookOpen, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SubjectCard } from "@/components/planos/SubjectCard";
-import { getSubjects, addSubject } from "@/services/planService";
+import { getSubjects, addSubject, updateSubject, deleteSubject } from "@/services/planService";
 import type { Subject } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -58,6 +58,15 @@ export default function PlanosPage() {
   const [newColor, setNewColor]       = useState<string>(DEFAULT_COLOR);
   const [saving, setSaving]           = useState(false);
   const [formError, setFormError]     = useState("");
+
+  // Edit / Delete state
+  const [editDialogOpen, setEditDialogOpen]     = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedSubject, setSelectedSubject]   = useState<Subject | null>(null);
+  
+  const [editTitle, setEditTitle] = useState("");
+  const [editColor, setEditColor] = useState<string>(DEFAULT_COLOR);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // -------------------------------------------------------------------------
   // Fetch subjects on mount
@@ -130,6 +139,61 @@ export default function PlanosPage() {
   }
 
   // -------------------------------------------------------------------------
+  // Handlers for Edit and Delete
+  // -------------------------------------------------------------------------
+  function openEditDialog(subject: Subject) {
+    setSelectedSubject(subject);
+    setEditTitle(subject.title);
+    setEditColor(subject.color || DEFAULT_COLOR);
+    setFormError("");
+    setEditDialogOpen(true);
+  }
+
+  async function handleEdit() {
+    if (!selectedSubject) return;
+    const trimmedTitle = editTitle.trim();
+    if (!trimmedTitle) {
+      setFormError("O nome da disciplina é obrigatório.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setFormError("");
+      await updateSubject(selectedSubject.id, { title: trimmedTitle, color: editColor });
+      
+      setSubjects((prev) =>
+        prev.map((s) => (s.id === selectedSubject.id ? { ...s, title: trimmedTitle, color: editColor } : s))
+      );
+      setEditDialogOpen(false);
+    } catch (err) {
+      console.error("Erro ao editar disciplina:", err);
+      setFormError("Ocorreu um erro ao salvar. Tente novamente.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openDeleteDialog(subject: Subject) {
+    setSelectedSubject(subject);
+    setDeleteDialogOpen(true);
+  }
+
+  async function handleDelete() {
+    if (!selectedSubject) return;
+    try {
+      setIsDeleting(true);
+      await deleteSubject(selectedSubject.id);
+      setSubjects((prev) => prev.filter((s) => s.id !== selectedSubject.id));
+      setDeleteDialogOpen(false);
+    } catch (err) {
+      console.error("Erro ao excluir disciplina:", err);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
   return (
@@ -194,7 +258,31 @@ export default function PlanosPage() {
       {!loading && subjects.length > 0 && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {subjects.map((subject) => (
-            <SubjectCard key={subject.id} subject={subject} />
+            <div key={subject.id} className="relative group">
+              <SubjectCard subject={subject} />
+              
+              {/* Floating action buttons */}
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 focus-within:opacity-100">
+                <Button 
+                  variant="secondary" 
+                  size="icon" 
+                  className="h-8 w-8 bg-white/90 hover:bg-white shadow-sm border" 
+                  onClick={() => openEditDialog(subject)}
+                  title="Editar Disciplina"
+                >
+                  <Pencil className="w-4 h-4 text-slate-600" />
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="icon" 
+                  className="h-8 w-8 shadow-sm" 
+                  onClick={() => openDeleteDialog(subject)}
+                  title="Excluir Disciplina"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -300,6 +388,97 @@ export default function PlanosPage() {
               ) : (
                 "Salvar Disciplina"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Edit Subject Dialog                                                 */}
+      {/* ------------------------------------------------------------------ */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Disciplina</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label htmlFor="input-edit-title" className="text-sm font-medium text-slate-700">
+                Nome da Disciplina
+              </label>
+              <Input
+                id="input-edit-title"
+                placeholder="Ex: Direito Constitucional"
+                value={editTitle}
+                onChange={(e) => {
+                  setEditTitle(e.target.value);
+                  if (formError) setFormError("");
+                }}
+                onKeyDown={(e) => e.key === "Enter" && handleEdit()}
+                autoFocus
+              />
+              {formError && <p className="text-xs text-red-500">{formError}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="select-edit-color" className="text-sm font-medium text-slate-700">
+                Cor de Identificação
+              </label>
+              <Select value={editColor} onValueChange={(val) => val && setEditColor(val as string)}>
+                <SelectTrigger id="select-edit-color" className="w-full">
+                  <SelectValue>
+                    <div className="flex items-center gap-2">
+                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: editColor }} />
+                      <span>{COLOR_OPTIONS.find((c) => c.value === editColor)?.label || "Personalizada"}</span>
+                    </div>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {COLOR_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center gap-2">
+                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: option.value }} />
+                        <span>{option.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="h-2 w-full rounded-full transition-colors" style={{ backgroundColor: editColor }} aria-hidden="true" />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleEdit} disabled={saving}>
+              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Salvando...</> : "Salvar Alterações"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Delete Confirmation Dialog                                          */}
+      {/* ------------------------------------------------------------------ */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Excluir Disciplina</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-slate-600">
+              Tem certeza que deseja excluir a disciplina <strong>{selectedSubject?.title}</strong>? Esta ação não pode ser desfeita e removerá os tópicos associados.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isDeleting}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Excluindo...</> : "Sim, Excluir"}
             </Button>
           </DialogFooter>
         </DialogContent>
