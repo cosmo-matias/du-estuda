@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import {
   Home,
   BookOpen,
@@ -14,9 +15,14 @@ import {
   ClipboardList,
   Timer,
   Bell,
+  LogOut,
+  Loader2,
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { signOut, User } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 // ---------------------------------------------------------------------------
 // Navigation items
@@ -92,16 +98,30 @@ function Sidebar() {
 // ---------------------------------------------------------------------------
 interface TopbarProps {
   title?: string;
+  user: User;
 }
 
-function Topbar({ title = "Dashboard" }: TopbarProps) {
+function Topbar({ title = "Dashboard", user }: TopbarProps) {
+  async function handleLogout() {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
+  }
+
+  // Pega as iniciais do nome para o fallback
+  const initials = user.displayName
+    ? user.displayName.split(" ").map((n) => n[0]).join("").toUpperCase().substring(0, 2)
+    : "US";
+
   return (
     <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6 shrink-0">
       {/* Left — page title */}
       <h1 className="text-base font-semibold text-slate-800">{title}</h1>
 
       {/* Right — actions */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-4">
         <button
           aria-label="Notificações"
           className="relative rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
@@ -111,11 +131,26 @@ function Topbar({ title = "Dashboard" }: TopbarProps) {
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-indigo-600 ring-2 ring-white" />
         </button>
 
-        <Avatar className="h-8 w-8 cursor-pointer">
-          <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs font-semibold">
-            DU
-          </AvatarFallback>
-        </Avatar>
+        <div className="h-6 w-px bg-slate-200" />
+
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium text-slate-700 hidden sm:inline-block">
+            {user.displayName || "Usuário"}
+          </span>
+          <Avatar className="h-8 w-8 border border-slate-200">
+            <AvatarImage src={user.photoURL || undefined} alt={user.displayName || "Avatar"} />
+            <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs font-semibold">
+              {initials}
+            </AvatarFallback>
+          </Avatar>
+          <button 
+            onClick={handleLogout}
+            className="text-slate-400 hover:text-red-500 transition-colors p-1"
+            title="Sair"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        </div>
       </div>
     </header>
   );
@@ -130,13 +165,38 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children, pageTitle }: DashboardLayoutProps) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Guard routing logic
+  useEffect(() => {
+    if (!loading && !user && pathname !== "/login") {
+      router.replace("/login");
+    }
+  }, [user, loading, pathname, router]);
+
+  // Se for a rota de login, não exibe Sidebar nem Topbar
+  if (pathname === "/login") {
+    return <>{children}</>;
+  }
+
+  // Show loading spinner while checking auth status or during redirect
+  if (loading || !user) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <Sidebar />
 
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar title={pageTitle} />
+        <Topbar title={pageTitle} user={user} />
 
         <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
           {children}
