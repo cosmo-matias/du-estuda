@@ -91,3 +91,18 @@ export interface StudySession {
   /** Anotações livres do estudante sobre a sessão (opcional) */
   notes?: string;
 }
+
+// -----------------------------------------------------------------------------
+// Review
+// Representa uma revisão agendada no ciclo de estudos.
+// -----------------------------------------------------------------------------
+export interface Review {
+  id: string;
+  userId: string;
+  subjectTitle: string;
+  topicTitle: string;
+  cycle: string;
+  category: string;
+  scheduledFor: string | Date;
+  status: 'pending' | 'completed' | 'ignored';
+}
