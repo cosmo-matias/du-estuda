@@ -22,10 +22,11 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { addStudySession } from "@/services/sessionService";
-import { getSubjects } from "@/services/planService";
+import { getSubjectsByPlan } from "@/services/planSubjectService";
 import { getTopicsBySubject } from "@/services/topicService";
-import type { Subject, Topic, StudyCategory } from "@/types";
+import type { Topic, StudyCategory } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -43,12 +44,6 @@ const POMODORO_DURATIONS = [25, 30, 50] as const;
 
 /** Placeholder until authentication is implemented */
 const PLACEHOLDER_USER_ID = "user-placeholder-123";
-
-/**
- * Provisional planId used to fetch subjects.
- * Will be replaced once user authentication and plan selection are implemented.
- */
-const PROVISIONAL_PLAN_ID = "plano-padrao-123";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,12 +90,14 @@ export default function CronometroPage() {
 function CronometroContent() {
   const searchParams = useSearchParams();
   const querySubjectId = searchParams.get("subjectId");
+  const { user }                              = useAuth();
+  const { activePlan }                        = usePlan();
+
   // ---------------------------------------------------------------------- //
   // Mode & Pomodoro settings                                                //
   // ---------------------------------------------------------------------- //
   const [mode, setMode]                       = useState<TimerMode>("free");
   const [pomodoroDuration, setPomodoroDuration] = useState<number>(25);
-  const { user }                              = useAuth();
 
   // ---------------------------------------------------------------------- //
   // Timer                                                                   //
@@ -119,7 +116,7 @@ function CronometroContent() {
   // ---------------------------------------------------------------------- //
   // Firestore data                                                          //
   // ---------------------------------------------------------------------- //
-  const [subjects, setSubjects]           = useState<Subject[]>([]);
+  const [subjects, setSubjects]           = useState<{id: string; title: string}[]>([]);
   const [topics, setTopics]               = useState<Topic[]>([]);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [loadingTopics, setLoadingTopics]     = useState(false);
@@ -199,11 +196,16 @@ function CronometroContent() {
     let cancelled = false;
 
     async function fetchSubjects() {
-      if (!user) return;
+      if (!user || !activePlan) {
+        setSubjects([]);
+        return;
+      }
       try {
         setLoadingSubjects(true);
-        const data = await getSubjects(user.uid, PROVISIONAL_PLAN_ID);
-        if (!cancelled) setSubjects(data);
+        const data = await getSubjectsByPlan(activePlan.id);
+        if (!cancelled) {
+          setSubjects(data.map(ps => ({ id: ps.subjectId, title: ps.subjectTitle })));
+        }
       } catch (err) {
         console.error("Erro ao carregar disciplinas:", err);
       } finally {
@@ -213,7 +215,7 @@ function CronometroContent() {
 
     fetchSubjects();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user, activePlan]);
 
   // ---------------------------------------------------------------------- //
   // Auto-select subject from URL parameters                                 //
@@ -318,6 +320,7 @@ function CronometroContent() {
 
       const sessionPayload = {
         userId:            user!.uid,
+        planId:            activePlan!.id,
         subjectId:         selectedSubject,
         topicId:           selectedTopic || undefined,
         date:              new Date(),

@@ -85,6 +85,7 @@ export type StudyCategory =
 export interface StudySession {
   id: string;
   userId: string;
+  planId?: string;
   subjectId: string;
   /** Tópico estudado na sessão (opcional) */
   topicId?: string;

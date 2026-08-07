@@ -73,6 +73,16 @@ export async function getSessionsBySubject(userId: string, subjectId: string): P
   }));
 }
 
+export async function getSessionsByPlan(userId: string, planId: string): Promise<StudySession[]> {
+  const q = query(sessionsRef, where("userId", "==", userId), where("planId", "==", planId));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...(doc.data() as Omit<StudySession, "id">),
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // deleteStudySession
 // ---------------------------------------------------------------------------

@@ -15,15 +15,14 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { getAllStudySessions, deleteStudySession } from "@/services/sessionService";
+import { getSessionsByPlan, deleteStudySession } from "@/services/sessionService";
 import { getSubjects } from "@/services/planService";
 import type { StudySession, Subject } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 
-// ---------------------------------------------------------------------------
 // Constants & Mocks
 // ---------------------------------------------------------------------------
-const PROVISIONAL_PLAN_ID = "plano-padrao-123";
 
 const WEEKLY_HOURS_MOCK = [
   { day: "Seg", hours: 4.5 },
@@ -52,6 +51,7 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const { user }              = useAuth();
+  const { activePlan }        = usePlan();
 
   // -------------------------------------------------------------------------
   // Fetch Data
@@ -59,12 +59,15 @@ export default function DashboardPage() {
   useEffect(() => {
     let cancelled = false;
     async function loadData() {
-      if (!user) return;
+      if (!user || !activePlan) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         const [fetchedSessions, fetchedSubjects] = await Promise.all([
-          getAllStudySessions(user.uid),
-          getSubjects(user.uid, PROVISIONAL_PLAN_ID),
+          getSessionsByPlan(user.uid, activePlan.id),
+          getSubjects(user.uid, activePlan.id),
         ]);
         if (!cancelled) {
           setSessions(fetchedSessions);
@@ -80,7 +83,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, activePlan]);
 
   // -------------------------------------------------------------------------
   // Aggregations (useMemo)
@@ -185,6 +188,22 @@ export default function DashboardPage() {
     return (
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (!activePlan) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 text-center p-6">
+        <div className="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
+          <Target className="h-6 w-6 text-slate-400" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-slate-800">Nenhum plano ativo</h2>
+          <p className="text-sm text-slate-500 mt-1 max-w-sm">
+            Selecione ou crie um plano de estudos no menu superior para começar a acompanhar seu desempenho.
+          </p>
+        </div>
       </div>
     );
   }
