@@ -141,7 +141,9 @@ function Topbar({ title = "Dashboard", user }: TopbarProps) {
             disabled={planLoading || plans.length === 0}
           >
             <SelectTrigger className="w-[200px] h-8 text-xs bg-slate-50 border-slate-200 focus:ring-0">
-              <SelectValue placeholder={planLoading ? "Carregando..." : "Nenhum plano"} />
+              <SelectValue placeholder={planLoading ? "Carregando..." : "Nenhum plano"}>
+                {activePlan?.title}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {plans.map((p) => (

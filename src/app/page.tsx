@@ -17,22 +17,13 @@ import {
 } from "recharts";
 import { getSessionsByPlan, deleteStudySession } from "@/services/sessionService";
 import { getSubjects } from "@/services/planService";
-import type { StudySession, Subject } from "@/types";
+import { getTopicsByPlan } from "@/services/topicService";
+import type { StudySession, Subject, Topic } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/contexts/PlanContext";
 
 // Constants & Mocks
 // ---------------------------------------------------------------------------
-
-const WEEKLY_HOURS_MOCK = [
-  { day: "Seg", hours: 4.5 },
-  { day: "Ter", hours: 3.0 },
-  { day: "Qua", hours: 5.2 },
-  { day: "Qui", hours: 4.8 },
-  { day: "Sex", hours: 2.5 },
-  { day: "Sáb", hours: 6.0 },
-  { day: "Dom", hours: 1.5 },
-];
 
 const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
 
@@ -49,6 +40,7 @@ function formatDuration(totalSeconds: number): string {
 export default function DashboardPage() {
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const { user }              = useAuth();
   const { activePlan }        = usePlan();
@@ -65,13 +57,15 @@ export default function DashboardPage() {
       }
       try {
         setLoading(true);
-        const [fetchedSessions, fetchedSubjects] = await Promise.all([
+        const [fetchedSessions, fetchedSubjects, fetchedTopics] = await Promise.all([
           getSessionsByPlan(user.uid, activePlan.id),
           getSubjects(user.uid, activePlan.id),
+          getTopicsByPlan(activePlan.id)
         ]);
         if (!cancelled) {
           setSessions(fetchedSessions);
           setSubjects(fetchedSubjects);
+          setTopics(fetchedTopics);
         }
       } catch (err) {
         console.error("Erro ao carregar dados do dashboard:", err);
@@ -95,7 +89,26 @@ export default function DashboardPage() {
     return formatDuration(totalSeconds);
   }, [sessions]);
 
-  // 2. Habit Tracker (Últimos 14 dias)
+  // 2. Desempenho Global (Acertos)
+  const accuracyPercent = useMemo(() => {
+    let qTotal = 0;
+    let qCorrect = 0;
+    sessions.forEach(s => {
+      qTotal += s.questionsTotal || 0;
+      qCorrect += s.questionsCorrect || 0;
+    });
+    if (qTotal === 0) return 0;
+    return Math.round((qCorrect / qTotal) * 100);
+  }, [sessions]);
+
+  // 3. Progresso no Edital
+  const planProgress = useMemo(() => {
+    if (topics.length === 0) return 0;
+    const completed = topics.filter(t => t.isCompleted).length;
+    return Math.round((completed / topics.length) * 100);
+  }, [topics]);
+
+  // 4. Habit Tracker (Últimos 14 dias)
   const habitTracker = useMemo(() => {
     const tracker = [];
     const today = new Date();
@@ -160,6 +173,34 @@ export default function DashboardPage() {
     return [...sessions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5);
+  }, [sessions]);
+
+  // 6. Gráfico Semanal Real
+  const weeklyChartData = useMemo(() => {
+    const days = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return {
+        dateObj: d,
+        day: d.toLocaleDateString("pt-BR", { weekday: 'short' }).replace('.', ''),
+        seconds: 0
+      };
+    });
+
+    sessions.forEach(s => {
+      const sessionDate = new Date(s.date);
+      const match = days.find(
+        d => d.dateObj.toDateString() === sessionDate.toDateString()
+      );
+      if (match) {
+        match.seconds += s.durationInSeconds;
+      }
+    });
+
+    return days.map(d => ({
+      day: d.day,
+      hours: Number((d.seconds / 3600).toFixed(2))
+    }));
   }, [sessions]);
 
   // -------------------------------------------------------------------------
@@ -243,9 +284,9 @@ export default function DashboardPage() {
             <Target className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">78%</div>
+            <div className="text-2xl font-bold text-slate-900">{accuracyPercent}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Média de acertos geral (Mock)
+              Média de acertos geral
             </p>
           </CardContent>
         </Card>
@@ -258,9 +299,9 @@ export default function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">12%</div>
+            <div className="text-2xl font-bold text-slate-900">{planProgress}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Tópicos concluídos (Mock)
+              Tópicos concluídos
             </p>
           </CardContent>
         </Card>
@@ -304,12 +345,12 @@ export default function DashboardPage() {
         {/* Bar Chart - Weekly Hours */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg text-slate-800">Estudo Semanal (Mock)</CardTitle>
+            <CardTitle className="text-lg text-slate-800">Estudo Semanal (Horas)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={WEEKLY_HOURS_MOCK} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={weeklyChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <XAxis 
                     dataKey="day" 
                     axisLine={false}
@@ -412,11 +453,11 @@ export default function DashboardPage() {
                   >
                     <div className="flex items-center gap-3">
                       <div 
-                        className="w-2 h-10 rounded-full" 
+                        className="w-2 h-10 rounded-full shrink-0" 
                         style={{ backgroundColor: subject?.color || "#cbd5e1" }}
                       />
                       <div>
-                        <p className="font-medium text-slate-800 text-sm">
+                        <p className="font-medium text-slate-800 text-sm line-clamp-1">
                           {subject?.title || "Disciplina Desconhecida"}
                         </p>
                         <p className="text-xs text-slate-500">

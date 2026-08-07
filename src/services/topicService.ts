@@ -30,6 +30,16 @@ export async function getTopicsByPlanAndSubject(planId: string, subjectId: strin
   }));
 }
 
+export async function getTopicsByPlan(planId: string): Promise<Topic[]> {
+  const q = query(topicsRef, where("planId", "==", planId));
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...(doc.data() as Omit<Topic, "id">),
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // getTopicsBySubject (Deprecated/Legacy - maintain for backward compatibility if needed)
 // ---------------------------------------------------------------------------
