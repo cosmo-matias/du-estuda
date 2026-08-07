@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PlanProvider } from "@/contexts/PlanContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,7 +23,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="h-full">
         <AuthProvider>
-          <DashboardLayout>{children}</DashboardLayout>
+          <PlanProvider>
+            <DashboardLayout>{children}</DashboardLayout>
+          </PlanProvider>
         </AuthProvider>
       </body>
     </html>

@@ -21,8 +21,16 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/contexts/PlanContext";
 import { signOut, User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ---------------------------------------------------------------------------
 // Navigation items
@@ -100,6 +108,8 @@ interface TopbarProps {
 }
 
 function Topbar({ title = "Dashboard", user }: TopbarProps) {
+  const { plans, activePlan, setActivePlan, loading: planLoading } = usePlan();
+
   async function handleLogout() {
     try {
       await signOut(auth);
@@ -115,8 +125,32 @@ function Topbar({ title = "Dashboard", user }: TopbarProps) {
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6 shrink-0">
-      {/* Left — page title */}
-      <h1 className="text-base font-semibold text-slate-800">{title}</h1>
+      {/* Left — page title & plan selector */}
+      <div className="flex items-center gap-4">
+        <h1 className="text-base font-semibold text-slate-800">{title}</h1>
+        
+        <div className="h-4 w-px bg-slate-300 hidden sm:block" />
+        
+        <div className="hidden sm:block">
+          <Select 
+            value={activePlan?.id || ""} 
+            onValueChange={(val) => {
+              const selected = plans.find((p) => p.id === val);
+              if (selected) setActivePlan(selected);
+            }}
+            disabled={planLoading || plans.length === 0}
+          >
+            <SelectTrigger className="w-[200px] h-8 text-xs bg-slate-50 border-slate-200 focus:ring-0">
+              <SelectValue placeholder={planLoading ? "Carregando..." : "Nenhum plano"} />
+            </SelectTrigger>
+            <SelectContent>
+              {plans.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Right — actions */}
       <div className="flex items-center gap-4">

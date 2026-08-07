@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { getSubjectById } from "@/services/planService";
 import { getSessionsBySubject } from "@/services/sessionService";
-import { getTopicsBySubject } from "@/services/topicService";
+import { getTopicsBySubject, addTopic } from "@/services/topicService";
 import type { Subject, StudySession, Topic } from "@/types";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
@@ -30,6 +30,9 @@ function SubjectDashboardContent() {
   const [sessions, setSessions] = useState<StudySession[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  const [newTopic, setNewTopic] = useState("");
+  const [addingTopic, setAddingTopic] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,6 +94,26 @@ function SubjectDashboardContent() {
     setTopics((prev) =>
       prev.map((t) => (t.id === topicId ? { ...t, isCompleted: !t.isCompleted } : t))
     );
+  }
+
+  async function handleAddTopic(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTopic.trim() || !subject) return;
+
+    try {
+      setAddingTopic(true);
+      const added = await addTopic({
+        subjectId: subject.id,
+        title: newTopic.trim(),
+        isCompleted: false,
+      });
+      setTopics((prev) => [...prev, added]);
+      setNewTopic("");
+    } catch (err) {
+      console.error("Erro ao adicionar tópico:", err);
+    } finally {
+      setAddingTopic(false);
+    }
   }
 
   if (loading) {
@@ -162,7 +185,7 @@ function SubjectDashboardContent() {
 
         <Card className="shadow-sm border-slate-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Progresso no Edital</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">Progresso no Plano</CardTitle>
             <CheckCircle className="h-5 w-5 text-blue-500" />
           </CardHeader>
           <CardContent>
@@ -247,12 +270,27 @@ function SubjectDashboardContent() {
           <Card className="shadow-sm border-slate-200 h-full flex flex-col">
             <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
               <CardTitle className="text-lg text-slate-800 flex items-center justify-between">
-                Edital Verticalizado
+                Tópicos da Disciplina
                 <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
                   {topics.length} tópicos
                 </span>
               </CardTitle>
             </CardHeader>
+            <div className="p-4 border-b border-slate-100 bg-white">
+              <form onSubmit={handleAddTopic} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Novo tópico..."
+                  value={newTopic}
+                  onChange={(e) => setNewTopic(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={addingTopic}
+                />
+                <Button type="submit" disabled={addingTopic || !newTopic.trim()} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+                  {addingTopic ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
+                </Button>
+              </form>
+            </div>
             <CardContent className="p-0 flex-1 overflow-y-auto max-h-[calc(100vh-200px)]">
               {topics.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-center gap-3">
