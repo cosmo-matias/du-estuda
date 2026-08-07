@@ -2,6 +2,8 @@ import {
   collection,
   addDoc,
   serverTimestamp,
+  getDocs,
+  query,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { StudySession } from "@/types";
@@ -42,4 +44,18 @@ export async function addStudySession(
   const docRef = await addDoc(sessionsRef, payload);
 
   return { id: docRef.id, ...session };
+}
+
+// ---------------------------------------------------------------------------
+// getAllStudySessions
+// Busca todas as sessões de estudo (sem filtro de usuário no momento).
+// ---------------------------------------------------------------------------
+export async function getAllStudySessions(): Promise<StudySession[]> {
+  const q = query(sessionsRef);
+  const snapshot = await getDocs(q);
+
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...(doc.data() as Omit<StudySession, "id">),
+  }));
 }
