@@ -71,14 +71,14 @@ export default function RevisoesPage() {
     };
   }, [user, activePlan]);
 
-  async function handleCompleteReview(reviewId: string) {
+  async function handleCompleteReview(review: Review) {
     try {
-      setCompletingId(reviewId);
-      await completeReview(reviewId);
+      setCompletingId(review.id);
+      await completeReview(review);
       
       // Remove from UI with a slight delay for the animation
       setTimeout(() => {
-        setReviews(prev => prev.filter(r => r.id !== reviewId));
+        setReviews(prev => prev.filter(r => r.id !== review.id));
         setCompletingId(null);
       }, 300);
       
@@ -185,7 +185,7 @@ export default function RevisoesPage() {
                   </div>
                   
                   <Button 
-                    onClick={() => handleCompleteReview(review.id)}
+                    onClick={() => handleCompleteReview(review)}
                     disabled={isCompleting}
                     variant="outline"
                     className="group border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-600 transition-colors shrink-0"

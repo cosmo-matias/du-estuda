@@ -32,7 +32,32 @@ export async function getPendingReviewsByPlan(userId: string, planId: string): P
   }));
 }
 
-export async function completeReview(reviewId: string): Promise<void> {
-  const docRef = doc(db, "reviews", reviewId);
+export async function completeReview(review: Review): Promise<void> {
+  const docRef = doc(db, "reviews", review.id);
   await updateDoc(docRef, { completed: true });
+
+  // Dispara a próxima revisão no ciclo
+  if (review.step === 1) {
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + 7);
+    await addReview({
+      userId: review.userId,
+      planId: review.planId,
+      subjectId: review.subjectId,
+      scheduledDate: nextDate.toISOString(),
+      completed: false,
+      step: 2
+    });
+  } else if (review.step === 2) {
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + 30);
+    await addReview({
+      userId: review.userId,
+      planId: review.planId,
+      subjectId: review.subjectId,
+      scheduledDate: nextDate.toISOString(),
+      completed: false,
+      step: 3
+    });
+  }
 }
