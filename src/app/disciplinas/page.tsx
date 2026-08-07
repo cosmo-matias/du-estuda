@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState, useEffect } from "react";
 import { Plus, BookOpen, Loader2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -259,7 +261,9 @@ export default function PlanosPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {subjects.map((subject) => (
             <div key={subject.id} className="relative group">
-              <SubjectCard subject={subject} />
+              <Link href={`/disciplinas/${subject.id}`} className="block">
+                <SubjectCard subject={subject} />
+              </Link>
               
               {/* Floating action buttons */}
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10 focus-within:opacity-100">

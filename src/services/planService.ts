@@ -8,6 +8,7 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  getDoc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Subject } from "@/types";
@@ -39,6 +40,15 @@ export async function getAllSubjects(userId: string): Promise<Subject[]> {
     id: doc.id,
     ...(doc.data() as Omit<Subject, "id">),
   }));
+}
+
+export async function getSubjectById(subjectId: string): Promise<Subject | null> {
+  const docRef = doc(db, "subjects", subjectId);
+  const snapshot = await getDoc(docRef);
+  if (snapshot.exists()) {
+    return { id: snapshot.id, ...snapshot.data() } as Subject;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
