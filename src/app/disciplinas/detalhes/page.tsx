@@ -12,7 +12,6 @@ import { getSubjectById } from "@/services/planService";
 import { getSessionsByPlan } from "@/services/sessionService";
 import { getTopicsByPlanAndSubject, addTopic, deleteTopic } from "@/services/topicService";
 import type { Subject, StudySession, Topic } from "@/types";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import Link from "next/link";
 
 function formatDuration(totalSeconds: number): string {
@@ -93,21 +92,6 @@ function SubjectDashboardContent() {
     }
     
     return { totalQuestions: qTotal, totalCorrect: qCorrect, accuracyPercent: acc };
-  }, [sessions]);
-
-  const chartData = useMemo(() => {
-    const grouped: Record<string, number> = {};
-    sessions.forEach((s) => {
-      const dateStr = new Date(s.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short' });
-      grouped[dateStr] = (grouped[dateStr] || 0) + s.durationInSeconds;
-    });
-
-    return Object.entries(grouped)
-      .map(([date, seconds]) => ({
-        date,
-        minutes: Math.round(seconds / 60),
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date)); // Simple string sort for demonstration
   }, [sessions]);
 
   const tableTotals = useMemo(() => {
@@ -262,30 +246,6 @@ function SubjectDashboardContent() {
       </div>
 
       <div className="flex flex-col gap-6">
-        {/* Evolução no Tempo */}
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-lg text-slate-800">Evolução do Tempo (Minutos)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {chartData.length === 0 ? (
-              <div className="h-[250px] flex items-center justify-center text-sm text-slate-400 border-2 border-dashed rounded-lg">
-                Sem dados suficientes para exibir o gráfico.
-              </div>
-            ) : (
-              <div className="h-[250px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} />
-                    <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    <Bar dataKey="minutes" fill={subject.color || "#6366f1"} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Histórico de Registros */}
         <Card className="shadow-sm border-slate-200">
