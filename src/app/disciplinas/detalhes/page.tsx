@@ -110,6 +110,24 @@ function SubjectDashboardContent() {
       .sort((a, b) => a.date.localeCompare(b.date)); // Simple string sort for demonstration
   }, [sessions]);
 
+  const tableTotals = useMemo(() => {
+    let qT = 0, qC = 0;
+    topics.forEach(topic => {
+      const topicSessions = sessions.filter(s => s.topicId === topic.id);
+      topicSessions.forEach(s => {
+        qT += s.questionsTotal || 0;
+        qC += s.questionsCorrect || 0;
+      });
+    });
+    const qW = qT - qC;
+    const acc = qT > 0 ? Math.round((qC / qT) * 100) : 0;
+    
+    const completed = topics.filter(t => t.isCompleted).length;
+    const progress = topics.length > 0 ? Math.round((completed / topics.length) * 100) : 0;
+
+    return { totalQuestions: qT, totalCorrect: qC, totalWrong: qW, accuracy: acc, progress };
+  }, [topics, sessions]);
+
   // Mock toggle topic completion
   function toggleTopic(topicId: string) {
     setTopics((prev) =>
@@ -431,6 +449,35 @@ function SubjectDashboardContent() {
                       );
                     })}
                   </tbody>
+                  <tfoot className="bg-slate-50 border-t border-slate-200">
+                    <tr>
+                      <td colSpan={8} className="px-4 py-3">
+                        <div className="flex justify-end items-center gap-6">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-2">Total</span>
+                            <span className="px-3 py-1 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 bg-white" title="Questões Resolvidas">
+                              📝 {tableTotals.totalQuestions}
+                            </span>
+                            <span className="px-3 py-1 rounded-full border border-emerald-100 text-sm font-semibold text-emerald-700 bg-emerald-50" title="Acertos">
+                              ✔️ {tableTotals.totalCorrect}
+                            </span>
+                            <span className="px-3 py-1 rounded-full border border-red-100 text-sm font-semibold text-red-700 bg-red-50" title="Erros">
+                              ❌ {tableTotals.totalWrong}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full border text-sm font-semibold ${tableTotals.accuracy >= 70 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                              {tableTotals.accuracy}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Progresso</span>
+                            <span className="px-3 py-1 rounded-full text-sm font-bold bg-indigo-600 text-white shadow-sm">
+                              {tableTotals.progress}%
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             )}
