@@ -220,10 +220,12 @@ function SubjectDashboardContent() {
             <Target className="h-5 w-5 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{accuracyPercent}%</div>
-            <p className="text-xs text-emerald-600 font-medium mt-1">
-              {totalCorrect} acertos / {totalQuestions - totalCorrect} erros
-            </p>
+            <div className="text-3xl font-bold text-slate-900 mb-2">{accuracyPercent}%</div>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-600 font-medium">Total de Questões: {totalQuestions}</p>
+              <p className="text-xs text-emerald-600 font-medium">Acertos: {totalCorrect}</p>
+              <p className="text-xs text-red-500 font-medium">Erros: {totalQuestions - totalCorrect}</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -241,146 +243,199 @@ function SubjectDashboardContent() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Section 1 & 3: Historico and Charts (takes 2 cols) */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
-          {/* Evolução no Tempo */}
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader>
-              <CardTitle className="text-lg text-slate-800">Evolução do Tempo (Minutos)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {chartData.length === 0 ? (
-                <div className="h-[250px] flex items-center justify-center text-sm text-slate-400 border-2 border-dashed rounded-lg">
-                  Sem dados suficientes para exibir o gráfico.
-                </div>
-              ) : (
-                <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} />
-                      <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                      <Bar dataKey="minutes" fill={subject.color || "#6366f1"} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      <div className="flex flex-col gap-6">
+        {/* Evolução no Tempo */}
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-lg text-slate-800">Evolução do Tempo (Minutos)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {chartData.length === 0 ? (
+              <div className="h-[250px] flex items-center justify-center text-sm text-slate-400 border-2 border-dashed rounded-lg">
+                Sem dados suficientes para exibir o gráfico.
+              </div>
+            ) : (
+              <div className="h-[250px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "#64748b" }} />
+                    <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Bar dataKey="minutes" fill={subject.color || "#6366f1"} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Histórico de Registros */}
-          <Card className="shadow-sm border-slate-200">
-            <CardHeader>
-              <CardTitle className="text-lg text-slate-800">Histórico de Sessões</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {sessions.length === 0 ? (
-                <div className="flex items-center justify-center py-8 text-sm text-slate-500 border-t">
-                  Nenhuma sessão registrada.
-                </div>
-              ) : (
-                <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
-                  {sessions.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(session => (
-                    <div key={session.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-sm font-medium text-slate-800">
-                          {new Date(session.date).toLocaleDateString("pt-BR", { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </span>
-                        <span className="text-xs px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md w-fit font-medium">
-                          {session.category}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-6 text-right">
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Tempo</p>
-                          <p className="text-sm font-semibold text-slate-700">{formatDuration(session.durationInSeconds)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-0.5">Acertos/Total</p>
-                          <p className="text-sm font-semibold text-emerald-600">
-                            {session.questionsCorrect || 0}/{session.questionsTotal || 0}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        {/* Histórico de Registros */}
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-lg text-slate-800">Histórico de Registros</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {sessions.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-sm text-slate-500 border-t">
+                Nenhuma sessão registrada.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-y border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">Data</th>
+                      <th className="px-4 py-3 font-medium">Categoria</th>
+                      <th className="px-4 py-3 font-medium">Tempo</th>
+                      <th className="px-4 py-3 font-medium text-center">✔️</th>
+                      <th className="px-4 py-3 font-medium text-center">❌</th>
+                      <th className="px-4 py-3 font-medium text-center">%</th>
+                      <th className="px-4 py-3 font-medium">Tópico</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {sessions.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(session => {
+                      const qT = session.questionsTotal || 0;
+                      const qC = session.questionsCorrect || 0;
+                      const qW = qT - qC;
+                      const acc = qT > 0 ? Math.round((qC / qT) * 100) : 0;
+                      const topic = topics.find(t => t.id === session.topicId);
+
+                      return (
+                        <tr key={session.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                            {new Date(session.date).toLocaleDateString("pt-BR", { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-[10px] px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md font-semibold uppercase tracking-wider whitespace-nowrap">
+                              {session.category || "ESTUDO"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-700 font-medium whitespace-nowrap">
+                            {formatDuration(session.durationInSeconds)}
+                          </td>
+                          <td className="px-4 py-3 text-center text-emerald-600 font-medium">{qC}</td>
+                          <td className="px-4 py-3 text-center text-red-500 font-medium">{qW}</td>
+                          <td className="px-4 py-3 text-center text-slate-700 font-semibold">{qT > 0 ? `${acc}%` : "-"}</td>
+                          <td className="px-4 py-3 text-slate-600 truncate max-w-[200px]" title={topic?.title}>
+                            {topic ? topic.title : "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Section 2: Edital Verticalizado */}
-        <div className="lg:col-span-1">
-          <Card className="shadow-sm border-slate-200 h-full flex flex-col">
-            <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
-              <CardTitle className="text-lg text-slate-800 flex items-center justify-between">
-                Tópicos da Disciplina
-                <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
-                  {topics.length} tópicos
-                </span>
-              </CardTitle>
-            </CardHeader>
-            <div className="p-4 border-b border-slate-100 bg-white">
-              <form onSubmit={handleAddTopic} className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Novo tópico..."
-                  value={newTopic}
-                  onChange={(e) => setNewTopic(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={addingTopic}
-                />
-                <Button type="submit" disabled={addingTopic || !newTopic.trim()} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
-                  {addingTopic ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
-                </Button>
-              </form>
-            </div>
-            <CardContent className="p-0 flex-1 overflow-y-auto max-h-[calc(100vh-200px)]">
-              {topics.length === 0 ? (
-                <div className="flex flex-col items-center justify-center p-8 text-center gap-3">
-                  <div className="p-3 bg-slate-100 rounded-full">
-                    <CheckCircle className="h-6 w-6 text-slate-400" />
-                  </div>
-                  <p className="text-sm text-slate-500">Nenhum tópico cadastrado.</p>
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
+            <CardTitle className="text-lg text-slate-800 flex items-center justify-between">
+              <span>Plano <span className="text-indigo-600">{activePlan.title}</span> Verticalizado</span>
+              <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded-full">
+                {topics.length} tópicos
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <div className="p-4 border-b border-slate-100 bg-white">
+            <form onSubmit={handleAddTopic} className="flex gap-2 max-w-md">
+              <input
+                type="text"
+                placeholder="Novo tópico..."
+                value={newTopic}
+                onChange={(e) => setNewTopic(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-600 disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={addingTopic}
+              />
+              <Button type="submit" disabled={addingTopic || !newTopic.trim()} size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+                {addingTopic ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
+              </Button>
+            </form>
+          </div>
+          <CardContent className="p-0">
+            {topics.length === 0 ? (
+              <div className="flex flex-col items-center justify-center p-8 text-center gap-3">
+                <div className="p-3 bg-slate-100 rounded-full">
+                  <CheckCircle className="h-6 w-6 text-slate-400" />
                 </div>
-              ) : (
-                <div className="divide-y divide-slate-100">
-                  {topics.map(topic => (
-                    <div key={topic.id} className="p-4 flex items-start gap-3 hover:bg-slate-50 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={topic.isCompleted}
-                        onChange={() => toggleTopic(topic.id)}
-                        className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
-                      />
-                      <div className="flex-1">
-                        <p className={`text-sm font-medium transition-colors ${topic.isCompleted ? 'text-slate-400 line-through' : 'text-slate-700'}`}>
-                          {topic.title}
-                        </p>
-                        <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
-                          <div
-                            className={`h-full transition-all ${topic.isCompleted ? 'bg-emerald-400 w-full' : 'bg-indigo-400 w-[15%]'}`}
-                          />
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteTopic(topic.id)}
-                        className="text-slate-400 hover:text-red-500 hover:bg-red-50 h-8 w-8 ml-2"
-                        title="Excluir Tópico"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <p className="text-sm text-slate-500">Nenhum tópico cadastrado.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-4 py-3 font-medium w-10">St</th>
+                      <th className="px-4 py-3 font-medium">Tópico</th>
+                      <th className="px-4 py-3 font-medium text-center">📝</th>
+                      <th className="px-4 py-3 font-medium text-center">✔️</th>
+                      <th className="px-4 py-3 font-medium text-center">❌</th>
+                      <th className="px-4 py-3 font-medium text-center">%</th>
+                      <th className="px-4 py-3 font-medium">Último Estudo</th>
+                      <th className="px-4 py-3 font-medium text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {topics.map(topic => {
+                      const topicSessions = sessions.filter(s => s.topicId === topic.id);
+                      let qT = 0, qC = 0;
+                      let lastDate = 0;
+                      topicSessions.forEach(s => {
+                        qT += s.questionsTotal || 0;
+                        qC += s.questionsCorrect || 0;
+                        const sTime = new Date(s.date).getTime();
+                        if (sTime > lastDate) lastDate = sTime;
+                      });
+                      const qW = qT - qC;
+                      const acc = qT > 0 ? Math.round((qC / qT) * 100) : 0;
+                      const lastStudyDate = lastDate > 0 ? new Date(lastDate).toLocaleDateString("pt-BR", { day: '2-digit', month: '2-digit', year: '2-digit' }) : "-";
+
+                      return (
+                        <tr key={topic.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-4 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={topic.isCompleted}
+                              onChange={() => toggleTopic(topic.id)}
+                              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className={`font-medium transition-colors ${topic.isCompleted ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                              {topic.title}
+                            </p>
+                          </td>
+                          <td className="px-4 py-3 text-center text-slate-700 font-medium">{qT}</td>
+                          <td className="px-4 py-3 text-center text-emerald-600 font-medium">{qC}</td>
+                          <td className="px-4 py-3 text-center text-red-500 font-medium">{qW}</td>
+                          <td className="px-4 py-3 text-center text-slate-700 font-semibold">{qT > 0 ? `${acc}%` : "-"}</td>
+                          <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{lastStudyDate}</td>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 mr-2 h-8 px-2 font-semibold">
+                              Adicionar
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteTopic(topic.id)}
+                              className="text-slate-400 hover:text-red-500 hover:bg-red-50 h-8 w-8"
+                              title="Excluir Tópico"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
