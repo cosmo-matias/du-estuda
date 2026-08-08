@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
-import { Play, Clock, Target, CheckCircle, ArrowLeft, Loader2, Trash2 } from "lucide-react";
+import { Play, Clock, Target, CheckCircle, ArrowLeft, Loader2, Trash2, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -265,8 +265,8 @@ function SubjectDashboardContent() {
                       <th className="px-4 py-3 font-medium">Data</th>
                       <th className="px-4 py-3 font-medium">Categoria</th>
                       <th className="px-4 py-3 font-medium">Tempo</th>
-                      <th className="px-4 py-3 font-medium text-center">✔️</th>
-                      <th className="px-4 py-3 font-medium text-center">❌</th>
+                      <th className="px-4 py-3 font-medium text-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto" strokeWidth={2.5} /></th>
+                      <th className="px-4 py-3 font-medium text-center"><XCircle className="w-4 h-4 text-red-500 mx-auto" strokeWidth={2.5} /></th>
                       <th className="px-4 py-3 font-medium text-center">%</th>
                       <th className="px-4 py-3 font-medium">Tópico</th>
                     </tr>
@@ -348,9 +348,9 @@ function SubjectDashboardContent() {
                     <tr>
                       <th className="px-4 py-3 font-medium w-10">St</th>
                       <th className="px-4 py-3 font-medium">Tópico</th>
-                      <th className="px-4 py-3 font-medium text-center">📝</th>
-                      <th className="px-4 py-3 font-medium text-center">✔️</th>
-                      <th className="px-4 py-3 font-medium text-center">❌</th>
+                      <th className="px-4 py-3 font-medium text-center"><Target className="w-4 h-4 text-slate-500 mx-auto" strokeWidth={2.5} /></th>
+                      <th className="px-4 py-3 font-medium text-center"><CheckCircle2 className="w-4 h-4 text-emerald-600 mx-auto" strokeWidth={2.5} /></th>
+                      <th className="px-4 py-3 font-medium text-center"><XCircle className="w-4 h-4 text-red-500 mx-auto" strokeWidth={2.5} /></th>
                       <th className="px-4 py-3 font-medium text-center">%</th>
                       <th className="px-4 py-3 font-medium">Último Estudo</th>
                       <th className="px-4 py-3 font-medium text-right">Ações</th>
@@ -415,14 +415,14 @@ function SubjectDashboardContent() {
                         <div className="flex justify-end items-center gap-6">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider mr-2">Total</span>
-                            <span className="px-3 py-1 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 bg-white" title="Questões Resolvidas">
-                              📝 {tableTotals.totalQuestions}
+                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 text-sm font-semibold text-slate-700 bg-white" title="Questões Resolvidas">
+                              <Target className="w-4 h-4 text-slate-500" strokeWidth={2.5} /> {tableTotals.totalQuestions}
                             </span>
-                            <span className="px-3 py-1 rounded-full border border-emerald-100 text-sm font-semibold text-emerald-700 bg-emerald-50" title="Acertos">
-                              ✔️ {tableTotals.totalCorrect}
+                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-100 text-sm font-semibold text-emerald-700 bg-emerald-50" title="Acertos">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600" strokeWidth={2.5} /> {tableTotals.totalCorrect}
                             </span>
-                            <span className="px-3 py-1 rounded-full border border-red-100 text-sm font-semibold text-red-700 bg-red-50" title="Erros">
-                              ❌ {tableTotals.totalWrong}
+                            <span className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-red-100 text-sm font-semibold text-red-700 bg-red-50" title="Erros">
+                              <XCircle className="w-4 h-4 text-red-500" strokeWidth={2.5} /> {tableTotals.totalWrong}
                             </span>
                             <span className={`px-3 py-1 rounded-full border text-sm font-semibold ${tableTotals.accuracy >= 70 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                               {tableTotals.accuracy}%
