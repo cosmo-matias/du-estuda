@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Target, TrendingUp, Check, X, Loader2, Trash2 } from "lucide-react";
+import { Clock, Target, TrendingUp, Check, X, Loader2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -42,6 +42,7 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const { user }              = useAuth();
   const { activePlan }        = usePlan();
 
@@ -149,9 +150,8 @@ export default function DashboardPage() {
       dates.add(new Date(s.date).toDateString());
     });
 
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
+    const year = currentCalendarDate.getFullYear();
+    const month = currentCalendarDate.getMonth();
     
     // Get first day of month (0 = Sunday)
     const firstDay = new Date(year, month, 1).getDay();
@@ -170,7 +170,7 @@ export default function DashboardPage() {
     }
 
     return { currentMonthDays: days, studiedDates: dates };
-  }, [sessions]);
+  }, [sessions, currentCalendarDate]);
 
   // 3. Estudos do Dia (PieChart)
   const dailySubjectsData = useMemo(() => {
@@ -236,6 +236,23 @@ export default function DashboardPage() {
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
+  
+  const handlePrevMonth = () => {
+    setCurrentCalendarDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() - 1);
+      return newDate;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setCurrentCalendarDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + 1);
+      return newDate;
+    });
+  };
+
   async function handleDeleteSession(sessionId: string) {
     if (!window.confirm("Tem certeza que deseja excluir esta sessão de estudo? Esta ação não pode ser desfeita.")) {
       return;
@@ -375,10 +392,18 @@ export default function DashboardPage() {
 
         <div className="lg:col-span-1">
           <Card className="h-full flex flex-col">
-            <CardHeader className="pb-2">
+            <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider capitalize">
-                {new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                {currentCalendarDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
               </CardTitle>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400" onClick={handlePrevMonth}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400" onClick={handleNextMonth}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col justify-center">
               <div className="grid grid-cols-7 gap-1 text-center mb-2">
@@ -390,8 +415,26 @@ export default function DashboardPage() {
                 {currentMonthDays.map((dateObj, i) => {
                   if (!dateObj) return <div key={`empty-${i}`} className="aspect-square" />;
                   
-                  const isToday = dateObj.toDateString() === new Date().toDateString();
-                  const isStudied = studiedDates.has(dateObj.toDateString());
+                  const dateStr = dateObj.toDateString();
+                  const isToday = dateStr === new Date().toDateString();
+                  const isStudied = studiedDates.has(dateStr);
+                  
+                  const isExamDay = activePlan?.targetDate 
+                    ? new Date(activePlan.targetDate).toDateString() === dateStr
+                    : false;
+                  
+                  if (isExamDay) {
+                    return (
+                      <div
+                        key={i}
+                        className="aspect-square flex flex-col items-center justify-center rounded-md bg-red-500 text-white font-bold ring-4 ring-red-200 shadow-sm"
+                        title="Dia D - Data da Prova"
+                      >
+                        <span className="text-xs leading-none mb-0.5">{dateObj.getDate()}</span>
+                        <span className="text-[9px] block leading-none font-black">DIA D</span>
+                      </div>
+                    );
+                  }
                   
                   return (
                     <div
