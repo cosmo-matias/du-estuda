@@ -251,9 +251,6 @@ export default function PlanejamentoPage() {
   const dragIndexRef = useRef<number | null>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
-  // Legacy round-robin cycle (used when no custom config exists yet)
-  const [legacyCycle, setLegacyCycle] = useState<PlanSubjectWithDetails[]>([]);
-
   // Local mutable blocks (supports reordering)
   const [localBlocks, setLocalBlocks] = useState<DisplayBlock[]>([]);
 
@@ -274,7 +271,6 @@ export default function PlanejamentoPage() {
 
         if (!cancelled) {
           setSubjects(fetchedSubjects);
-          setLegacyCycle(generateStudyCycle(fetchedSubjects));
           setCycleConfig(savedConfig);
         }
       } catch (err) {
@@ -288,7 +284,7 @@ export default function PlanejamentoPage() {
     return () => { cancelled = true; };
   }, [user, activePlan]);
 
-  // Sync localBlocks whenever cycleConfig or legacyCycle changes
+  // Sync localBlocks whenever cycleConfig changes
   useEffect(() => {
     const hasCustom = cycleConfig !== null && cycleConfig.cycleSequence.length > 0;
     const blocks: DisplayBlock[] = hasCustom
@@ -296,11 +292,9 @@ export default function PlanejamentoPage() {
           id: b.id, subjectId: b.subjectId,
           durationMinutes: b.durationMinutes, isLegacy: false,
         }))
-      : legacyCycle.map((ps, i) => ({
-          id: `legacy-${i}`, subjectId: ps.subjectId, isLegacy: true,
-        }));
+      : [];
     setLocalBlocks(blocks);
-  }, [cycleConfig, legacyCycle]);
+  }, [cycleConfig]);
 
   // ---------------------------------------------------------------------------
   // Derived
@@ -544,18 +538,37 @@ export default function PlanejamentoPage() {
       </div>
 
       {/* ================================================================ */}
-      {/* MAIN SPLIT LAYOUT                                                 */}
+      {/* MAIN SPLIT LAYOUT OR EMPTY STATE                                */}
       {/* ================================================================ */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-
-        {/* ============================================================== */}
-        {/* LEFT — Draggable study sequence (7 cols)                        */}
-        {/* ============================================================== */}
-        <div className="lg:col-span-7 flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Sequência dos Estudos
-            </h2>
+      {!hasCustomCycle ? (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-200 border-dashed bg-slate-50 py-16 px-4 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 mb-4">
+            <Wand2 className="h-8 w-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">
+            Nenhum ciclo de estudos ativo
+          </h2>
+          <p className="text-slate-500 max-w-md mb-6">
+            Crie seu planejamento personalizado definindo horários e pesos das disciplinas.
+          </p>
+          <Button
+            onClick={() => setWizardOpen(true)}
+            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            <Wand2 className="h-4 w-4" />
+            Criar Planejamento
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* ============================================================== */}
+          {/* LEFT — Draggable study sequence (7 cols)                        */}
+          {/* ============================================================== */}
+          <div className="lg:col-span-7 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                Sequência dos Estudos
+              </h2>
             {hasCustomCycle && (
               <span className="text-[10px] text-slate-400 flex items-center gap-1">
                 <GripVertical className="h-3 w-3" /> Arraste para reordenar
@@ -638,6 +651,7 @@ export default function PlanejamentoPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ================================================================ */}
       {/* Wizard Modal                                                      */}
