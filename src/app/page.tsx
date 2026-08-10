@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Target, TrendingUp, Check, X, Loader2, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Target, TrendingUp, Check, X, Loader2, Trash2, ChevronLeft, ChevronRight, Quote } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -26,6 +26,37 @@ import { usePlan } from "@/contexts/PlanContext";
 // ---------------------------------------------------------------------------
 
 const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
+
+const INSPIRATIONAL_QUOTES = [
+  {
+    text: "O mais alto objetivo de toda verdadeira educação é o aperfeiçoamento moral bem como o desenvolvimento mental.",
+    author: "Ellen G. White, Educação"
+  },
+  {
+    text: "A verdadeira educação significa mais do que o avanço num certo curso de estudos. É o desenvolvimento harmônico das faculdades físicas, mentais e espirituais.",
+    author: "Ellen G. White, Educação"
+  },
+  {
+    text: "Maior do que a mais alta aspiração do pensamento humano para si mesmo é o ideal de Deus para Seus filhos.",
+    author: "Ellen G. White, Educação"
+  },
+  {
+    text: "A disciplina própria é a chave para o domínio de qualquer ciência ou arte.",
+    author: "Ellen G. White"
+  },
+  {
+    text: "A mente se expande à medida que busca compreender os mistérios do conhecimento com perseverança e fé.",
+    author: "Ellen G. White, Educação"
+  },
+  {
+    text: "O sucesso não é o resultado de uma explosão repentina, mas de um esforço constante e deliberado em direção a um ideal.",
+    author: "Ellen G. White, Educação"
+  },
+  {
+    text: "Na obra da educação é necessária a mais paciente e perseverante atenção aos pormenores.",
+    author: "Ellen G. White, Educação"
+  }
+];
 
 // Helper to format seconds to Xh Ymin
 function formatDuration(totalSeconds: number): string {
@@ -269,6 +300,17 @@ export default function DashboardPage() {
     }));
   }, [sessions]);
 
+  // 10. Daily Inspirational Quote
+  const dailyQuote = useMemo(() => {
+    const today = new Date();
+    const start = new Date(today.getFullYear(), 0, 0);
+    const diff = today.getTime() - start.getTime();
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    
+    return INSPIRATIONAL_QUOTES[dayOfYear % INSPIRATIONAL_QUOTES.length];
+  }, []);
+
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
@@ -436,8 +478,22 @@ export default function DashboardPage() {
                 </div>
               </div>
               
+              {/* Banner Inspiracional */}
+              <div className="my-auto py-5 px-6 rounded-xl border border-indigo-100/50 bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-emerald-50/60 flex items-center justify-center relative overflow-hidden shadow-sm">
+                <Quote className="absolute top-2 left-3 h-8 w-8 text-indigo-500/10 rotate-180" />
+                <div className="flex flex-col items-center justify-center relative z-10">
+                  <p className="italic font-medium text-slate-700 text-[13px] leading-relaxed text-center max-w-lg">
+                    "{dailyQuote.text}"
+                  </p>
+                  <p className="text-[10px] text-slate-500 font-bold mt-2 text-center uppercase tracking-wider">
+                    — {dailyQuote.author}
+                  </p>
+                </div>
+                <Quote className="absolute bottom-2 right-3 h-8 w-8 text-emerald-500/10" />
+              </div>
+              
               {/* Bolinhas (Dias) */}
-              <div className="flex flex-wrap items-end justify-center gap-2 sm:gap-3 lg:gap-4 mt-auto">
+              <div className="flex flex-wrap items-end justify-center gap-2 sm:gap-3 lg:gap-4 mt-auto pt-4">
                 {habitTracker.tracker.map((day, idx) => (
                   <div key={idx} className="flex flex-col items-center gap-1.5 group relative">
                     <span className="text-[10px] font-semibold text-slate-400 uppercase">{day.dayOfWeek}</span>
