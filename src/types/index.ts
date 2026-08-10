@@ -123,3 +123,34 @@ export interface Review {
   completed: boolean;
   step: number;
 }
+
+// -----------------------------------------------------------------------------
+// StudyCycleConfig
+// Configuração customizada do ciclo de estudos gerado pelo wizard.
+// Salva no Firestore como subcoleção ou documento do plano.
+// -----------------------------------------------------------------------------
+export interface CycleBlock {
+  id: string;
+  subjectId: string;
+  durationMinutes: number;
+  completed: boolean;
+}
+
+export interface StudyCycleConfig {
+  planId: string;
+  /** Total de horas de estudo por semana */
+  weeklyHours: number;
+  /** Dias da semana disponíveis: 0=Dom, 1=Seg … 6=Sáb */
+  selectedDays: number[];
+  /** Duração mínima de um bloco em minutos */
+  minBlockMinutes: number;
+  /** Duração máxima de um bloco em minutos */
+  maxBlockMinutes: number;
+  /** Pesos de importância por disciplina */
+  subjectWeights: { subjectId: string; weight: number }[];
+  /** Sequência final de blocos gerada pelo algoritmo */
+  cycleSequence: CycleBlock[];
+  /** Timestamp Firestore da última atualização */
+  updatedAt: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
+
