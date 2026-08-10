@@ -51,6 +51,7 @@ interface DisplayBlock {
   id: string;
   subjectId: string;
   durationMinutes?: number;
+  completed: boolean;
   isLegacy: boolean;
 }
 
@@ -171,6 +172,8 @@ function DraggableBlock({
       className={`flex items-center gap-3 rounded-xl border bg-white px-4 py-3 transition-all duration-200 cursor-grab active:cursor-grabbing select-none ${
         isCurrent
           ? "border-indigo-300 shadow-md ring-2 ring-indigo-100"
+          : block.completed
+          ? "border-emerald-200 bg-emerald-50/30 opacity-75 hover:opacity-100"
           : "border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300"
       }`}
     >
@@ -210,6 +213,13 @@ function DraggableBlock({
       {isCurrent && (
         <span className="hidden sm:inline-flex items-center rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white flex-shrink-0">
           Atual
+        </span>
+      )}
+      
+      {/* Completed badge */}
+      {block.completed && !isCurrent && (
+        <span className="hidden sm:inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 flex-shrink-0">
+          ✓ Concluído
         </span>
       )}
 
@@ -290,7 +300,7 @@ export default function PlanejamentoPage() {
     const blocks: DisplayBlock[] = hasCustom
       ? cycleConfig.cycleSequence.map((b: CycleBlock) => ({
           id: b.id, subjectId: b.subjectId,
-          durationMinutes: b.durationMinutes, isLegacy: false,
+          durationMinutes: b.durationMinutes, completed: b.completed ?? false, isLegacy: false,
         }))
       : [];
     setLocalBlocks(blocks);
@@ -309,11 +319,18 @@ export default function PlanejamentoPage() {
     }))
   );
 
-  // Completed blocks (currentPos acts as "how many have been studied")
-  const completedCount = currentPos;
+  // Completed blocks (using `completed` field instead of fallback currentPos)
+  const completedCount = localBlocks.filter(b => b.completed).length;
   const progressPct = localBlocks.length > 0
     ? Math.round((completedCount / localBlocks.length) * 100)
     : 0;
+
+  let computedCurrentPos = localBlocks.findIndex(b => !b.completed);
+  if (computedCurrentPos === -1 && localBlocks.length > 0) {
+    computedCurrentPos = localBlocks.length - 1; // if all complete but didn't refresh yet, park at last
+  } else if (computedCurrentPos === -1) {
+    computedCurrentPos = 0;
+  }
 
   // ---------------------------------------------------------------------------
   // Drag-and-drop handlers
@@ -481,7 +498,7 @@ export default function PlanejamentoPage() {
         <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 shadow-sm gap-1">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 ring-4 ring-indigo-100">
             <span className="text-lg font-black text-indigo-700 tabular-nums">
-              {Math.floor(completedCount / Math.max(1, localBlocks.length))}
+              {cycleConfig?.completedCyclesCount ?? 0}
             </span>
           </div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-center mt-1">
@@ -493,7 +510,7 @@ export default function PlanejamentoPage() {
         <div className="flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-4 shadow-sm gap-1">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 ring-4 ring-emerald-100">
             <span className="text-lg font-black text-emerald-700 tabular-nums">
-              {Math.min(currentPos + 1, localBlocks.length)}
+              {Math.min(computedCurrentPos + 1, localBlocks.length)}
             </span>
           </div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-center mt-1">
@@ -589,7 +606,7 @@ export default function PlanejamentoPage() {
                 <DraggableBlock
                   block={block}
                   index={index}
-                  isCurrent={index === currentPos}
+                  isCurrent={index === computedCurrentPos}
                   subject={subjectMap.get(block.subjectId)}
                   onDragStart={handleDragStart}
                   onDragOver={handleDragOver}

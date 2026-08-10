@@ -26,6 +26,7 @@ import { updatePlan } from "@/services/studyPlanService";
 import { addReview } from "@/services/reviewService";
 import { getSubjectsByPlan } from "@/services/planSubjectService";
 import { getTopicsBySubject } from "@/services/topicService";
+import { completeCycleBlock } from "@/services/cycleService";
 import type { Topic, StudyCategory } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/contexts/PlanContext";
@@ -398,6 +399,11 @@ function CronometroContent() {
       };
 
       await addStudySession(sessionPayload);
+
+      if (activeBlockId && activePlan) {
+        await completeCycleBlock(activePlan.id, activeBlockId);
+        setActiveBlockId(null);
+      }
 
       if (queryCycleIndex && queryCycleLength && activePlan) {
         const cIndex = parseInt(queryCycleIndex, 10);

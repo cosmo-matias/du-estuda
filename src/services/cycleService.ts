@@ -85,3 +85,42 @@ export async function updateCycleSequence(
   });
 }
 
+// ---------------------------------------------------------------------------
+// Complete a cycle block and advance/reset cycle if needed.
+// ---------------------------------------------------------------------------
+export async function completeCycleBlock(
+  planId: string,
+  blockId: string
+): Promise<void> {
+  const q = query(cycleConfigsRef, where("planId", "==", planId));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return;
+  
+  const docSnap = snapshot.docs[0];
+  const config = docSnap.data() as StudyCycleConfig;
+
+  let allCompleted = true;
+  const newSequence = config.cycleSequence.map((block) => {
+    if (block.id === blockId) {
+      block.completed = true;
+    }
+    if (!block.completed) {
+      allCompleted = false;
+    }
+    return block;
+  });
+
+  let newCount = config.completedCyclesCount ?? 0;
+  
+  if (allCompleted) {
+    // Reset cycle
+    newSequence.forEach(b => b.completed = false);
+    newCount += 1;
+  }
+
+  await updateDoc(docSnap.ref, {
+    cycleSequence: newSequence,
+    completedCyclesCount: newCount,
+    updatedAt: serverTimestamp(),
+  });
+}

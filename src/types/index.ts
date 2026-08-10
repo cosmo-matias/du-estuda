@@ -150,6 +150,8 @@ export interface StudyCycleConfig {
   subjectWeights: { subjectId: string; weight: number }[];
   /** Sequência final de blocos gerada pelo algoritmo */
   cycleSequence: CycleBlock[];
+  /** Contagem de ciclos completados com sucesso */
+  completedCyclesCount?: number;
   /** Timestamp Firestore da última atualização */
   updatedAt: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
