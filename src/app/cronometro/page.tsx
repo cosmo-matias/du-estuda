@@ -109,7 +109,10 @@ function CronometroContent() {
   // ---------------------------------------------------------------------- //
   const [timerState, setTimerState]   = useState<TimerState>("idle");
   const [elapsedSeconds, setElapsed]  = useState(0);
+  const [pausedTime, setPausedTime]   = useState(0);
+  const [isPaused, setIsPaused]       = useState(false);
   const intervalRef                   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pauseIntervalRef              = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ---------------------------------------------------------------------- //
   // Context selectors                                                       //
@@ -180,6 +183,29 @@ function CronometroContent() {
       }
     };
   }, [timerState]);
+
+  // Pause interval tracker
+  useEffect(() => {
+    if (isPaused) {
+      pauseIntervalRef.current = setInterval(
+        () => setPausedTime((prev) => prev + 1),
+        1000
+      );
+    } else {
+      if (pauseIntervalRef.current) {
+        clearInterval(pauseIntervalRef.current);
+        pauseIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (pauseIntervalRef.current) {
+        clearInterval(pauseIntervalRef.current);
+        pauseIntervalRef.current = null;
+      }
+    };
+  }, [isPaused]);
+
 
   // Auto-finish Pomodoro when time runs out
   useEffect(() => {
@@ -264,11 +290,19 @@ function CronometroContent() {
   // ---------------------------------------------------------------------- //
   // Control handlers                                                        //
   // ---------------------------------------------------------------------- //
-  function handlePlay()  { setTimerState("running"); }
-  function handlePause() { setTimerState("paused");  }
+  function handlePlay()  { 
+    setTimerState("running"); 
+    setIsPaused(false);
+  }
+  
+  function handlePause() { 
+    setTimerState("paused");  
+    setIsPaused(true);
+  }
 
   function handleStop() {
     setTimerState("paused");
+    setIsPaused(true);
     if (elapsedSeconds > 0) {
       openSessionDialog();
     } else {
@@ -279,6 +313,8 @@ function CronometroContent() {
   function resetTimer() {
     setTimerState("idle");
     setElapsed(0);
+    setPausedTime(0);
+    setIsPaused(false);
   }
 
   // ---------------------------------------------------------------------- //
@@ -288,12 +324,14 @@ function CronometroContent() {
     if (!value || timerState !== "idle") return;
     setMode(value as TimerMode);
     setElapsed(0);
+    setPausedTime(0);
   }
 
   function handlePomodoroDuration(minutes: number) {
     if (timerState !== "idle") return;
     setPomodoroDuration(minutes);
     setElapsed(0);
+    setPausedTime(0);
   }
 
   // ---------------------------------------------------------------------- //
@@ -335,6 +373,7 @@ function CronometroContent() {
         questionsCorrect:  safeInt(questionsCorrect),
         pagesRead:         safeInt(pagesRead),
         notes:             notes.trim() || undefined,
+        pausedDurationInSeconds: pausedTime > 0 ? pausedTime : undefined,
       };
 
       await addStudySession(sessionPayload);
@@ -578,6 +617,14 @@ function CronometroContent() {
         >
           {formatTime(displaySeconds)}
         </div>
+
+        {/* Pause Badge */}
+        {pausedTime > 0 && (
+          <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-1.5 text-sm font-medium text-amber-700 dark:border-amber-800 dark:bg-amber-950/30">
+            <Pause className={`h-4 w-4 ${isPaused ? "animate-pulse" : ""}`} />
+            Tempo em Pausa: {formatTime(pausedTime)}
+          </div>
+        )}
 
         {/* Pomodoro progress bar */}
         {mode === "pomodoro" && timerState !== "idle" && (

@@ -106,6 +106,8 @@ export interface StudySession {
   pagesRead?: number;
   /** Anotações livres do estudante sobre a sessão (opcional) */
   notes?: string;
+  /** Tempo em que o cronômetro ficou pausado em segundos (opcional) */
+  pausedDurationInSeconds?: number;
 }
 
 // -----------------------------------------------------------------------------
