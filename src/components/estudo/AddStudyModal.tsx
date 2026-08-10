@@ -178,9 +178,13 @@ export function AddStudyModal({
 
       // Agendar revisões
       if (scheduleReviews) {
-        const subName = subjects.find(s => s.subjectId === subjectId)?.subjectTitle ?? "Disciplina";
+        const sub = subjects.find(s => s.subjectId === subjectId);
+        const subName = sub?.subjectTitle ?? "Disciplina";
+        const subColor = sub?.subjectColor;
+        const topicName = topics.find(t => t.id === topicId)?.title;
         const baseDate = new Date(selectedDate);
         const intervals = [1, 7, 15, 30];
+        
         for (let i = 0; i < intervals.length; i++) {
           const rDate = new Date(baseDate);
           rDate.setDate(rDate.getDate() + intervals[i]);
@@ -188,9 +192,21 @@ export function AddStudyModal({
             userId: user.uid,
             planId: activePlan.id,
             subjectId,
+            subjectName: subName,
+            subjectColor: subColor,
+            topicId,
+            topicName,
+            category,
+            createdDate: baseDate.toISOString(),
             scheduledDate: rDate.toISOString(),
-            completed: false,
-            step: i + 1
+            intervalDays: intervals[i],
+            status: 'scheduled',
+            metrics: {
+              studyTime: durationStr,
+              questionsCount: showQuestions && qTotal ? parseInt(qTotal, 10) : undefined,
+              correctCount: showQuestions && qCorrect ? parseInt(qCorrect, 10) : undefined,
+              accuracy: showQuestions && qTotal && qCorrect ? Math.round((parseInt(qCorrect, 10) / parseInt(qTotal, 10)) * 100) : undefined
+            }
           });
         }
       }

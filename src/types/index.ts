@@ -124,14 +124,27 @@ export interface StudySession {
 // Review
 // Representa uma revisão agendada no ciclo de estudos.
 // -----------------------------------------------------------------------------
-export interface Review {
+export interface ReviewItem {
   id: string;
   userId: string;
   planId: string;
   subjectId: string;
-  scheduledDate: string;
-  completed: boolean;
-  step: number;
+  subjectName: string;
+  subjectColor?: string;
+  topicId?: string;
+  topicName?: string;
+  category?: string;
+  createdDate: string; // ISO string
+  scheduledDate: string; // ISO string
+  completedDate?: string; // ISO string
+  intervalDays: number;
+  status: 'scheduled' | 'delayed' | 'ignored' | 'completed';
+  metrics?: {
+    studyTime?: string;
+    questionsCount?: number;
+    correctCount?: number;
+    accuracy?: number;
+  };
 }
 
 // -----------------------------------------------------------------------------

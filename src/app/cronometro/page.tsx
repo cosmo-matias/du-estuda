@@ -136,17 +136,6 @@ function CronometroContent() {
   const [loadingTopics, setLoadingTopics]     = useState(false);
 
   // ---------------------------------------------------------------------- //
-  // Session dialog                                                          //
-  // ---------------------------------------------------------------------- //
-  const [isDialogOpen, setIsDialogOpen]           = useState(false);
-  const [questionsTotal, setQuestionsTotal]       = useState("");
-  const [questionsCorrect, setQuestionsCorrect]   = useState("");
-  const [pagesRead, setPagesRead]                 = useState("");
-  const [notes, setNotes]                         = useState("");
-  const [saving, setSaving]                       = useState(false);
-  const [saveError, setSaveError]                 = useState("");
-  
-  // ---------------------------------------------------------------------- //
   // Add Study Modal (Manual / Zen Mode exit)                                //
   // ---------------------------------------------------------------------- //
   const [addStudyModalOpen, setAddStudyModalOpen] = useState(false);
@@ -226,7 +215,7 @@ function CronometroContent() {
       elapsedSeconds >= pomodoroTotalSec
     ) {
       setTimerState("paused");
-      openSessionDialog();
+      setAddStudyModalOpen(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elapsedSeconds, mode, timerState, pomodoroTotalSec]);
@@ -368,94 +357,6 @@ function CronometroContent() {
   }
 
   // ---------------------------------------------------------------------- //
-  // Session dialog helpers                                                  //
-  // ---------------------------------------------------------------------- //
-  function openSessionDialog() {
-    setQuestionsTotal("");
-    setQuestionsCorrect("");
-    setPagesRead("");
-    setNotes("");
-    setSaveError("");
-    setIsDialogOpen(true);
-  }
-
-  function handleDiscardSession() {
-    setIsDialogOpen(false);
-    resetTimer();
-  }
-
-  async function handleSaveSession() {
-    if (!selectedSubject) {
-      setSaveError("Erro: Selecione uma disciplina antes de salvar a sessão.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setSaveError("");
-
-      const sessionPayload = {
-        userId:            user!.uid,
-        planId:            activePlan!.id,
-        subjectId:         selectedSubject,
-        topicId:           selectedTopic || undefined,
-        blockId:           activeBlockId || undefined,
-        date:              new Date(),
-        durationInSeconds: elapsedSeconds,
-        category:          (selectedCategory as StudyCategory) || "Teoria",
-        questionsTotal:    safeInt(questionsTotal),
-        questionsCorrect:  safeInt(questionsCorrect),
-        pagesRead:         safeInt(pagesRead),
-        notes:             notes.trim() || undefined,
-        pausedDurationInSeconds: pausedTime > 0 ? pausedTime : undefined,
-      };
-
-      await addStudySession(sessionPayload);
-
-      if (activeBlockId && activePlan) {
-        await completeCycleBlock(activePlan.id, activeBlockId);
-        setActiveBlockId(null);
-      }
-
-      if (queryCycleIndex && queryCycleLength && activePlan) {
-        const cIndex = parseInt(queryCycleIndex, 10);
-        const cLength = parseInt(queryCycleLength, 10);
-        if (!isNaN(cIndex) && !isNaN(cLength) && cLength > 0) {
-          const nextPos = (cIndex + 1) % cLength;
-          await updatePlan(activePlan.id, { currentCyclePosition: nextPos });
-          // Update the local context so it reflects immediately on navigation
-          setActivePlan({ ...activePlan, currentCyclePosition: nextPos });
-        }
-      }
-
-      // -------------------------------------------------------------
-      // Agendamento Automático de Revisão (24h)
-      // -------------------------------------------------------------
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
-      await addReview({
-        userId: user!.uid,
-        planId: activePlan!.id,
-        subjectId: selectedSubject,
-        scheduledDate: tomorrow.toISOString(),
-        completed: false,
-        step: 1
-      });
-
-      setIsDialogOpen(false);
-      resetTimer();
-    } catch (err: any) {
-      console.error("Erro original ao salvar sessão no Firestore:", err);
-      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
-      setSaveError(`Falha ao salvar: ${errorMessage}`);
-      // Fallback de alerta nativo para evitar falha completamente silenciosa caso o erro não seja visto na UI
-      alert(`Erro crítico ao salvar a sessão: ${errorMessage}`);
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleAddStudyModalSaved() {
     if (activeBlockId && activePlan) {
       await completeCycleBlock(activePlan.id, activeBlockId);
