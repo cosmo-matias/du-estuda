@@ -92,11 +92,15 @@ export default function CronometroPage() {
 function CronometroContent() {
   const searchParams = useSearchParams();
   const querySubjectId = searchParams.get("subjectId");
+  const queryBlockId = searchParams.get("blockId");
+  const queryDuration = searchParams.get("duration");
   const queryCycleIndex = searchParams.get("cycleIndex");
   const queryCycleLength = searchParams.get("cycleLength");
   
   const { user }                              = useAuth();
   const { activePlan, setActivePlan }         = usePlan();
+
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------- //
   // Mode & Pomodoro settings                                                //
@@ -249,7 +253,7 @@ function CronometroContent() {
   }, [user, activePlan]);
 
   // ---------------------------------------------------------------------- //
-  // Auto-select subject from URL parameters                                 //
+  // Auto-select subject and cycle parameters from URL                       //
   // ---------------------------------------------------------------------- //
   useEffect(() => {
     if (querySubjectId && subjects.length > 0) {
@@ -259,6 +263,22 @@ function CronometroContent() {
       }
     }
   }, [querySubjectId, subjects, selectedSubject]);
+
+  useEffect(() => {
+    if (queryBlockId) {
+      setActiveBlockId(queryBlockId);
+    }
+  }, [queryBlockId]);
+
+  useEffect(() => {
+    if (queryDuration) {
+      const dur = parseInt(queryDuration, 10);
+      if (!isNaN(dur) && dur > 0) {
+        setMode("pomodoro");
+        setPomodoroDuration(dur);
+      }
+    }
+  }, [queryDuration]);
 
   // ---------------------------------------------------------------------- //
   // Load topics from Firestore when selected subject changes                //
@@ -366,6 +386,7 @@ function CronometroContent() {
         planId:            activePlan!.id,
         subjectId:         selectedSubject,
         topicId:           selectedTopic || undefined,
+        blockId:           activeBlockId || undefined,
         date:              new Date(),
         durationInSeconds: elapsedSeconds,
         category:          (selectedCategory as StudyCategory) || "Teoria",
@@ -422,6 +443,12 @@ function CronometroContent() {
   // ---------------------------------------------------------------------- //
   return (
     <div className="flex min-h-full flex-col items-center justify-center gap-8 py-12">
+      {queryDuration && (
+        <div className="flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700">
+          <BookOpen className="h-4 w-4" />
+          Estudando Bloco do Ciclo: {queryDuration}min
+        </div>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Mode tabs — disabled while timer is active                         */}

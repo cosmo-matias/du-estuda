@@ -596,7 +596,7 @@ export default function PlanejamentoPage() {
                   onDrop={handleDrop}
                   onPlay={() =>
                     router.push(
-                      `/cronometro?subjectId=${block.subjectId}&cycleIndex=${index}&cycleLength=${localBlocks.length}`
+                      `/cronometro?subjectId=${block.subjectId}&blockId=${block.id}&duration=${block.durationMinutes ?? 0}&cycleIndex=${index}&cycleLength=${localBlocks.length}`
                     )
                   }
                   totalBlocks={localBlocks.length}
