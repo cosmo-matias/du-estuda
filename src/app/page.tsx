@@ -31,6 +31,8 @@ const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
 function formatDuration(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
   return `${h}h ${m}min`;
 }
 
@@ -42,7 +44,10 @@ export default function DashboardPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
+  
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
+  const [habitOffset, setHabitOffset] = useState(0);
+
   const { user }              = useAuth();
   const { activePlan }        = usePlan();
 
@@ -109,41 +114,80 @@ export default function DashboardPage() {
     return Math.round((completed / topics.length) * 100);
   }, [topics]);
 
-  // 4. Habit Tracker (Últimos 14 dias)
+  // 4. Global Habit Stats (Streak & Month)
+  const globalHabitStats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    let streak = 0;
+    let i = 0;
+    while(true) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i);
+        const hasSession = sessions.some(s => new Date(s.date).toDateString() === d.toDateString());
+        
+        if (!hasSession && i === 0) {
+            // Did not study today yet, streak might be alive from yesterday, skip breaking it
+        } else if (!hasSession) {
+            break;
+        } else {
+            streak++;
+        }
+        i++;
+    }
+
+    const thisMonth = today.getMonth();
+    const thisYear = today.getFullYear();
+    const uniqueDaysThisMonth = new Set<string>();
+    sessions.forEach(s => {
+        const d = new Date(s.date);
+        if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
+            uniqueDaysThisMonth.add(d.toDateString());
+        }
+    });
+
+    return { streak, monthDays: uniqueDaysThisMonth.size };
+  }, [sessions]);
+
+  // 5. Habit Tracker (Paginated 14 days)
   const habitTracker = useMemo(() => {
     const tracker = [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    let streak = 0;
-    let foundBreak = false;
+    
+    const viewEndDate = new Date(today);
+    viewEndDate.setDate(viewEndDate.getDate() - habitOffset);
+    
+    const viewStartDate = new Date(viewEndDate);
+    viewStartDate.setDate(viewStartDate.getDate() - 13);
+    
+    let daysStudiedInPeriod = 0;
 
     for (let i = 13; i >= 0; i--) {
-      const d = new Date(today);
+      const d = new Date(viewEndDate);
       d.setDate(d.getDate() - i);
       const dateString = d.toDateString();
 
-      const hasSession = sessions.some((s) => {
-        const sessionDate = new Date(s.date);
-        return sessionDate.toDateString() === dateString;
+      const daySessions = sessions.filter(s => new Date(s.date).toDateString() === dateString);
+      const hasSession = daySessions.length > 0;
+      const totalSeconds = daySessions.reduce((acc, s) => acc + s.durationInSeconds, 0);
+
+      if (hasSession) daysStudiedInPeriod++;
+
+      tracker.push({
+        dateObj: d,
+        hasSession,
+        totalSeconds,
+        dayOfWeek: d.toLocaleDateString("pt-BR", { weekday: 'short' }).replace('.', ''),
+        dayNumber: d.getDate(),
+        fullDateStr: d.toLocaleDateString("pt-BR", { day: '2-digit', month: 'long' })
       });
-
-      tracker.push(hasSession);
     }
+    
+    return { tracker, viewStartDate, viewEndDate, daysStudiedInPeriod };
+  }, [sessions, habitOffset]);
 
-    // Calculate streak (counting backwards from today)
-    for (let i = tracker.length - 1; i >= 0; i--) {
-      if (tracker[i]) {
-        streak++;
-      } else {
-        break; // Streak broken
-      }
-    }
-
-    return { tracker, streak };
-  }, [sessions]);
-
-  // 5. Calendário de Constância (Mês Atual)
+  // 6. Calendário de Constância (Mês Atual)
   const { currentMonthDays, studiedDates } = useMemo(() => {
     const dates = new Set<string>();
     sessions.forEach(s => {
@@ -153,18 +197,13 @@ export default function DashboardPage() {
     const year = currentCalendarDate.getFullYear();
     const month = currentCalendarDate.getMonth();
     
-    // Get first day of month (0 = Sunday)
     const firstDay = new Date(year, month, 1).getDay();
-    // Get number of days in month
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     
-    // Generate array for the calendar grid
     const days = [];
-    // Empty slots for padding
     for (let i = 0; i < firstDay; i++) {
       days.push(null);
     }
-    // Actual days
     for (let i = 1; i <= daysInMonth; i++) {
       days.push(new Date(year, month, i));
     }
@@ -172,40 +211,37 @@ export default function DashboardPage() {
     return { currentMonthDays: days, studiedDates: dates };
   }, [sessions, currentCalendarDate]);
 
-  // 3. Estudos do Dia (PieChart)
+  // 7. Estudos do Dia (PieChart)
   const dailySubjectsData = useMemo(() => {
     const todayStr = new Date().toDateString();
     
-    // Filter today's sessions
     const todaysSessions = sessions.filter((s) => {
       return new Date(s.date).toDateString() === todayStr;
     });
 
-    // Group by subjectId
     const grouped: Record<string, number> = {};
     todaysSessions.forEach((s) => {
       grouped[s.subjectId] = (grouped[s.subjectId] || 0) + s.durationInSeconds;
     });
 
-    // Map to recharts format (and convert to minutes or hours)
     return Object.entries(grouped).map(([subjectId, totalSeconds], index) => {
       const subject = subjects.find((sub) => sub.id === subjectId);
       return {
         name: subject?.title || "Desconhecida",
-        value: Math.round(totalSeconds / 60), // In minutes
+        value: Math.round(totalSeconds / 60),
         color: subject?.color || PIE_COLORS[index % PIE_COLORS.length],
       };
     }).filter(item => item.value > 0);
   }, [sessions, subjects]);
 
-  // 4. Últimas sessões
+  // 8. Últimas sessões
   const recentSessions = useMemo(() => {
     return [...sessions]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5);
   }, [sessions]);
 
-  // 6. Gráfico Semanal Real
+  // 9. Gráfico Semanal Real
   const weeklyChartData = useMemo(() => {
     const days = Array.from({ length: 7 }).map((_, i) => {
       const d = new Date();
@@ -257,9 +293,7 @@ export default function DashboardPage() {
     if (!window.confirm("Tem certeza que deseja excluir esta sessão de estudo? Esta ação não pode ser desfeita.")) {
       return;
     }
-
     try {
-      // Optimistic local update
       setSessions((prev) => prev.filter((s) => s.id !== sessionId));
       await deleteStudySession(sessionId);
     } catch (error) {
@@ -355,43 +389,90 @@ export default function DashboardPage() {
       </div>
 
       {/* Section 2: Habit Tracker & Calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         <div className="lg:col-span-2">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle className="text-lg text-slate-800">Constância nos Estudos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-4">
-                <p className="text-sm font-medium text-emerald-600 bg-emerald-50 w-fit px-3 py-1 rounded-full border border-emerald-100">
-                  {habitTracker.streak > 0 
-                    ? `🔥 Você está há ${habitTracker.streak} dia(s) sem falhar!`
-                    : "Comece a estudar hoje para criar sua constância!"}
-                </p>
-                
-                <div className="flex flex-wrap items-center gap-2 mt-2">
-                  {habitTracker.tracker.map((status, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
-                        status
-                          ? "bg-emerald-100 border-emerald-200 text-emerald-600"
-                          : "bg-red-50 border-red-100 text-red-400"
-                      }`}
-                      title={status ? "Meta atingida" : "Falhou"}
-                    >
-                      {status ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                    </div>
-                  ))}
+          <Card className="h-full flex flex-col min-h-[320px]">
+            <CardHeader className="pb-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <CardTitle className="text-lg text-slate-800">Constância Diária</CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-1 rounded-md">
+                    {habitTracker.viewStartDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short'})} - {habitTracker.viewEndDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short'})}
+                  </span>
+                  <div className="flex gap-1">
+                    <Button variant="outline" size="icon" className="h-7 w-7 text-slate-500" onClick={() => setHabitOffset(p => p + 14)}>
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" className="h-7 w-7 text-slate-500" onClick={() => setHabitOffset(p => Math.max(0, p - 14))} disabled={habitOffset === 0}>
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">Últimos 14 dias</p>
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1 flex flex-col justify-between">
+              {/* Resumo Rápido */}
+              <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 mb-4">
+                <div className="flex-1 bg-emerald-50 border border-emerald-100 rounded-lg p-3 flex flex-col items-center justify-center text-center">
+                  <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Sequência Atual</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-emerald-700 leading-none">{globalHabitStats.streak}</span>
+                    <span className="text-sm font-bold text-emerald-600">🔥</span>
+                  </div>
+                </div>
+                <div className="flex-1 bg-indigo-50 border border-indigo-100 rounded-lg p-3 flex flex-col items-center justify-center text-center">
+                  <span className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider mb-1">Dias no Mês</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-indigo-700 leading-none">{globalHabitStats.monthDays}</span>
+                    <span className="text-sm font-bold text-indigo-600">📅</span>
+                  </div>
+                </div>
+                <div className="flex-1 bg-amber-50 border border-amber-100 rounded-lg p-3 flex flex-col items-center justify-center text-center">
+                  <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1">Neste Período</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-amber-700 leading-none">{habitTracker.daysStudiedInPeriod}</span>
+                    <span className="text-sm font-bold text-amber-600">/ 14</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Bolinhas (Dias) */}
+              <div className="flex flex-wrap items-end justify-center gap-2 sm:gap-3 lg:gap-4 mt-auto">
+                {habitTracker.tracker.map((day, idx) => (
+                  <div key={idx} className="flex flex-col items-center gap-1.5 group relative">
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase">{day.dayOfWeek}</span>
+                    <div
+                      className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full border-2 transition-all ${
+                        day.hasSession
+                          ? "bg-emerald-100 border-emerald-400 text-emerald-600 shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-slate-300"
+                      }`}
+                    >
+                      {day.hasSession ? <Check className="h-4 w-4 sm:h-5 sm:w-5" /> : <X className="h-4 w-4 sm:h-5 sm:w-5" />}
+                    </div>
+                    <span className="text-xs font-bold text-slate-600">{day.dayNumber}</span>
+                    
+                    {/* Tooltip Hover Suave */}
+                    <div className="absolute -top-11 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col items-center">
+                      <div className="bg-slate-800 text-white text-[10px] whitespace-nowrap px-2 py-1 rounded shadow-lg flex flex-col items-center">
+                        <span className="font-semibold">{day.fullDateStr}</span>
+                        {day.hasSession ? (
+                          <span className="text-emerald-300 font-medium">{formatDuration(day.totalSeconds)}</span>
+                        ) : (
+                          <span className="text-slate-400">Não estudou</span>
+                        )}
+                      </div>
+                      <div className="w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800 -mt-px"></div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
         </div>
 
         <div className="lg:col-span-1">
-          <Card className="h-full flex flex-col">
+          <Card className="h-full flex flex-col min-h-[320px]">
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
               <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider capitalize">
                 {currentCalendarDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
