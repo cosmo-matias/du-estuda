@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "out",
+    "source": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -11,8 +11,6 @@
         "source": "**",
         "destination": "/index.html"
       }
-    ],
-    "cleanUrls": true,
-    "trailingSlash": false
+    ]
   }
 }
