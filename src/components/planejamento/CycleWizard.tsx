@@ -20,13 +20,13 @@ import type { PlanSubjectWithDetails } from "@/services/planSubjectService";
 const DAYS_OF_WEEK = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"] as const;
 
 const BLOCK_DURATIONS = [
-  { label: "30 min",  value: 30  },
-  { label: "45 min",  value: 45  },
-  { label: "1 h",     value: 60  },
-  { label: "1h15",    value: 75  },
-  { label: "1h30",    value: 90  },
-  { label: "2 h",     value: 120 },
-] as const;
+  { label: "30 min", value: 30  },
+  { label: "45 min", value: 45  },
+  { label: "1 h",    value: 60  },
+  { label: "1h15",   value: 75  },
+  { label: "1h30",   value: 90  },
+  { label: "2 h",    value: 120 },
+];
 
 const DEFAULT_WEEKLY_HOURS = 20;
 const DEFAULT_MIN_BLOCK    = 45;
@@ -79,6 +79,12 @@ export function CycleWizard({
   const [step, setStep]     = useState<1 | 2 | 3>(1);
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState("");
+
+  // Custom block duration input state
+  const [minIsCustom, setMinIsCustom] = useState(false);
+  const [maxIsCustom, setMaxIsCustom] = useState(false);
+  const [customMinInput, setCustomMinInput] = useState("");
+  const [customMaxInput, setCustomMaxInput] = useState("");
 
   // Step 1 — selected subject IDs
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -393,21 +399,21 @@ export function CycleWizard({
 
             {/* Block durations */}
             <div className="grid grid-cols-2 gap-4">
+              {/* --- Min block --- */}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700">
-                  Bloco mínimo
-                </label>
+                <label className="text-sm font-medium text-slate-700">Bloco mínimo</label>
                 <div className="flex flex-wrap gap-1.5">
                   {BLOCK_DURATIONS.map(({ label, value }) => (
                     <button
                       key={value}
                       type="button"
                       onClick={() => {
+                        setMinIsCustom(false);
                         setMinBlock(value);
                         if (value > maxBlock) setMaxBlock(value);
                       }}
                       className={`rounded-lg px-2 py-1 text-xs font-medium transition-all ${
-                        minBlock === value
+                        !minIsCustom && minBlock === value
                           ? "bg-emerald-600 text-white shadow-sm"
                           : "border border-slate-200 text-slate-500 hover:border-emerald-300"
                       }`}
@@ -415,21 +421,52 @@ export function CycleWizard({
                       {label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => setMinIsCustom(true)}
+                    className={`rounded-lg px-2 py-1 text-xs font-medium transition-all ${
+                      minIsCustom
+                        ? "bg-emerald-600 text-white shadow-sm"
+                        : "border border-slate-200 text-slate-500 hover:border-emerald-300"
+                    }`}
+                  >
+                    Custom
+                  </button>
                 </div>
+                {minIsCustom && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      type="number"
+                      min={5}
+                      max={240}
+                      placeholder="min"
+                      value={customMinInput}
+                      onChange={(e) => {
+                        setCustomMinInput(e.target.value);
+                        const v = parseInt(e.target.value, 10);
+                        if (!isNaN(v) && v >= 5) {
+                          setMinBlock(v);
+                          if (v > maxBlock) setMaxBlock(v);
+                        }
+                      }}
+                      className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <span className="text-xs text-slate-400">min</span>
+                  </div>
+                )}
               </div>
 
+              {/* --- Max block --- */}
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-slate-700">
-                  Bloco máximo
-                </label>
+                <label className="text-sm font-medium text-slate-700">Bloco máximo</label>
                 <div className="flex flex-wrap gap-1.5">
                   {BLOCK_DURATIONS.filter((d) => d.value >= minBlock).map(({ label, value }) => (
                     <button
                       key={value}
                       type="button"
-                      onClick={() => setMaxBlock(value)}
+                      onClick={() => { setMaxIsCustom(false); setMaxBlock(value); }}
                       className={`rounded-lg px-2 py-1 text-xs font-medium transition-all ${
-                        maxBlock === value
+                        !maxIsCustom && maxBlock === value
                           ? "bg-indigo-600 text-white shadow-sm"
                           : "border border-slate-200 text-slate-500 hover:border-indigo-300"
                       }`}
@@ -437,9 +474,39 @@ export function CycleWizard({
                       {label}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => setMaxIsCustom(true)}
+                    className={`rounded-lg px-2 py-1 text-xs font-medium transition-all ${
+                      maxIsCustom
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "border border-slate-200 text-slate-500 hover:border-indigo-300"
+                    }`}
+                  >
+                    Custom
+                  </button>
                 </div>
+                {maxIsCustom && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <input
+                      type="number"
+                      min={minBlock}
+                      max={480}
+                      placeholder="max"
+                      value={customMaxInput}
+                      onChange={(e) => {
+                        setCustomMaxInput(e.target.value);
+                        const v = parseInt(e.target.value, 10);
+                        if (!isNaN(v) && v >= minBlock) setMaxBlock(v);
+                      }}
+                      className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <span className="text-xs text-slate-400">min</span>
+                  </div>
+                )}
               </div>
             </div>
+
 
             {/* Preview */}
             {previewBlocks.length > 0 && (

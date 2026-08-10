@@ -66,3 +66,22 @@ export async function deleteCycleConfig(planId: string): Promise<void> {
     await deleteDoc(doc(db, "studyCycleConfigs", d.id));
   }
 }
+
+// ---------------------------------------------------------------------------
+// Update only the cycleSequence of an existing config document.
+// Used after the user reorders blocks via drag-and-drop.
+// ---------------------------------------------------------------------------
+export async function updateCycleSequence(
+  planId: string,
+  newSequence: import("@/types").CycleBlock[]
+): Promise<void> {
+  const q = query(cycleConfigsRef, where("planId", "==", planId));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return;
+  const existingDoc = snapshot.docs[0];
+  await updateDoc(existingDoc.ref, {
+    cycleSequence: newSequence,
+    updatedAt: serverTimestamp(),
+  });
+}
+
