@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, Target, TrendingUp, Check, X, Loader2, Trash2, ChevronLeft, ChevronRight, Quote } from "lucide-react";
+import { Clock, Target, TrendingUp, Check, X, Loader2, Trash2, ChevronLeft, ChevronRight, Quote, RefreshCw } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -28,34 +28,37 @@ import { usePlan } from "@/contexts/PlanContext";
 const PIE_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6"];
 
 const INSPIRATIONAL_QUOTES = [
-  {
-    text: "O mais alto objetivo de toda verdadeira educação é o aperfeiçoamento moral bem como o desenvolvimento mental.",
-    author: "Ellen G. White, Educação"
-  },
-  {
-    text: "A verdadeira educação significa mais do que o avanço num certo curso de estudos. É o desenvolvimento harmônico das faculdades físicas, mentais e espirituais.",
-    author: "Ellen G. White, Educação"
-  },
-  {
-    text: "Maior do que a mais alta aspiração do pensamento humano para si mesmo é o ideal de Deus para Seus filhos.",
-    author: "Ellen G. White, Educação"
-  },
-  {
-    text: "A disciplina própria é a chave para o domínio de qualquer ciência ou arte.",
-    author: "Ellen G. White"
-  },
-  {
-    text: "A mente se expande à medida que busca compreender os mistérios do conhecimento com perseverança e fé.",
-    author: "Ellen G. White, Educação"
-  },
-  {
-    text: "O sucesso não é o resultado de uma explosão repentina, mas de um esforço constante e deliberado em direção a um ideal.",
-    author: "Ellen G. White, Educação"
-  },
-  {
-    text: "Na obra da educação é necessária a mais paciente e perseverante atenção aos pormenores.",
-    author: "Ellen G. White, Educação"
-  }
+  { text: "A verdadeira educação significa mais do que o avanço num certo curso de estudos. É o desenvolvimento harmônico das faculdades físicas, mentais e espirituais.", author: "Ellen G. White", source: "Educação, p. 13" },
+  { text: "O mais alto objetivo de toda verdadeira educação é o aperfeiçoamento moral bem como o desenvolvimento mental.", author: "Ellen G. White", source: "Educação, p. 18" },
+  { text: "Maior do que a mais alta aspiração do pensamento humano para si mesmo é o ideal de Deus para Seus filhos.", author: "Ellen G. White", source: "Educação, p. 18" },
+  { text: "A mente se expande à medida que busca compreender os mistérios do conhecimento com perseverança e fé.", author: "Ellen G. White", source: "Educação" },
+  { text: "A disciplina própria é a chave para o domínio de qualquer ciência ou arte.", author: "Ellen G. White" },
+  { text: "O conhecimento adquirido por meio do esforço próprio é o que melhor se fixa na memória e produz resultados práticos.", author: "Ellen G. White", source: "Educação" },
+  { text: "É dever de cada estudante desenvolver as faculdades mentais ao máximo, aproveitando todas as oportunidades de crescimento.", author: "Ellen G. White", source: "Educação" },
+  { text: "A perseverança diante das dificuldades é o verdadeiro teste da firmeza de propósito de um aprendiz.", author: "Ellen G. White", source: "Educação" },
+  { text: "A ordem e a pontualidade no trabalho diário são essenciais para o verdadeiro sucesso acadêmico e pessoal.", author: "Ellen G. White", source: "Educação" },
+  { text: "Aquele que almeja alcançar elevados ideais intelectuais precisa cultivar hábitos diários de paciência e aplicação.", author: "Ellen G. White", source: "Educação" },
+  { text: "O verdadeiro educador estimula o aluno a pensar por si mesmo, não apenas a refletir o pensamento de outrem.", author: "Ellen G. White", source: "Educação, p. 17" },
+  { text: "Cada conquista no estudo exige concentração contínua e disposição para recomeçar sempre que necessário.", author: "Ellen G. White", source: "Educação" },
+  { text: "A dedicação constante e o método no estudo transformam talentos comuns em capacidades extraordinárias.", author: "Ellen G. White", source: "Educação" },
+  { text: "O valor do tempo é incalculável. Cada hora gasta em estudo diligente constrói a solidez do caráter futuro.", author: "Ellen G. White", source: "Educação" },
+  { text: "A mente que se dedica ao estudo sincero encontra fontes inesgotáveis de renovação e crescimento moral.", author: "Ellen G. White", source: "Educação" },
+  { text: "A obra da educação e a da redenção são uma e a mesma.", author: "Ellen G. White", source: "Educação, p. 30" },
+  { text: "O amor, a base da criação e da redenção, é o fundamento da verdadeira educação.", author: "Ellen G. White", source: "Educação, p. 16" },
+  { text: "O esforço diligente e o estudo rigoroso, aliados à fé, removem montanhas de ignorância.", author: "Ellen G. White" },
+  { text: "Nenhuma linha de estudo é mais importante do que aquela que desenvolve o caráter.", author: "Ellen G. White", source: "Educação" },
+  { text: "Cada faculdade mental e física deve ser cultivada com o propósito de servir melhor à humanidade.", author: "Ellen G. White", source: "Educação" },
+  { text: "O intelecto humano se fortalece quando entra em contato com a mente do Criador.", author: "Ellen G. White", source: "Educação, p. 14" },
+  { text: "A excelência no aprendizado não é obra do acaso, mas o resultado de um esforço constante e disciplinado.", author: "Ellen G. White" },
+  { text: "A verdadeira educação não ignora o valor do conhecimento científico, mas o subordina a propósitos mais elevados.", author: "Ellen G. White", source: "Educação" },
+  { text: "A mente, como os músculos, cresce em força pelo exercício sistemático e persistente.", author: "Ellen G. White", source: "Educação" },
+  { text: "A pureza de coração e a clareza de pensamento caminham juntas na busca pelo verdadeiro saber.", author: "Ellen G. White" },
+  { text: "Não devemos nos contentar com conquistas superficiais; o estudo profundo é o alicerce da sabedoria.", author: "Ellen G. White", source: "Educação" },
+  { text: "Os hábitos de estudo formados na juventude determinarão a força e a utilidade da vida adulta.", author: "Ellen G. White", source: "Educação" },
+  { text: "Aquele que busca o conhecimento com um propósito nobre nunca estudará em vão.", author: "Ellen G. White" },
+  { text: "O verdadeiro sucesso nos estudos é medido pela capacidade de aplicar o conhecimento para o bem comum.", author: "Ellen G. White", source: "Educação" },
+  { text: "O caráter não se forma por acidente, mas por esforços diários e repetidos na direção do que é certo.", author: "Ellen G. White", source: "Educação" },
+  { text: "A educação é uma obra para toda a vida, um processo contínuo de crescimento mental e espiritual.", author: "Ellen G. White", source: "Educação" }
 ];
 
 // Helper to format seconds to Xh Ymin
@@ -78,6 +81,7 @@ export default function DashboardPage() {
   
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [habitOffset, setHabitOffset] = useState(0);
+  const [manualQuoteOffset, setManualQuoteOffset] = useState(0);
 
   const { user }              = useAuth();
   const { activePlan }        = usePlan();
@@ -308,8 +312,8 @@ export default function DashboardPage() {
     const oneDay = 1000 * 60 * 60 * 24;
     const dayOfYear = Math.floor(diff / oneDay);
     
-    return INSPIRATIONAL_QUOTES[dayOfYear % INSPIRATIONAL_QUOTES.length];
-  }, []);
+    return INSPIRATIONAL_QUOTES[(dayOfYear + manualQuoteOffset) % INSPIRATIONAL_QUOTES.length];
+  }, [manualQuoteOffset]);
 
   // -------------------------------------------------------------------------
   // Handlers
@@ -479,14 +483,25 @@ export default function DashboardPage() {
               </div>
               
               {/* Banner Inspiracional */}
-              <div className="my-auto py-5 px-6 rounded-xl border border-indigo-100/50 bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-emerald-50/60 flex items-center justify-center relative overflow-hidden shadow-sm">
+              <div className="my-auto py-5 px-6 rounded-xl border border-indigo-100/50 bg-gradient-to-r from-indigo-50/70 via-purple-50/40 to-emerald-50/60 flex items-center justify-center relative overflow-hidden shadow-sm group/banner">
                 <Quote className="absolute top-2 left-3 h-8 w-8 text-indigo-500/10 rotate-180" />
+                
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute top-2 right-2 h-7 w-7 text-indigo-400/50 hover:text-indigo-600 hover:bg-indigo-100/50 opacity-0 group-hover/banner:opacity-100 transition-opacity"
+                  onClick={() => setManualQuoteOffset(p => p + 1)}
+                  title="Próxima Frase"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                </Button>
+
                 <div className="flex flex-col items-center justify-center relative z-10">
                   <p className="italic font-medium text-slate-700 text-[13px] leading-relaxed text-center max-w-lg">
                     "{dailyQuote.text}"
                   </p>
                   <p className="text-[10px] text-slate-500 font-bold mt-2 text-center uppercase tracking-wider">
-                    — {dailyQuote.author}
+                    — {dailyQuote.author}{dailyQuote.source ? `, ${dailyQuote.source}` : ""}
                   </p>
                 </div>
                 <Quote className="absolute bottom-2 right-3 h-8 w-8 text-emerald-500/10" />
