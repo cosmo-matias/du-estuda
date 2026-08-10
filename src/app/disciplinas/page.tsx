@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SubjectCard } from "@/components/planos/SubjectCard";
+import { AddStudyModal } from "@/components/estudo/AddStudyModal";
 import { getSubjects, addSubject, updateSubject, deleteSubject } from "@/services/planService";
 import type { Subject } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,6 +60,7 @@ export default function PlanosPage() {
   const [subjects, setSubjects]       = useState<Subject[]>([]);
   const [loading, setLoading]         = useState(true);
   const [dialogOpen, setDialogOpen]   = useState(false);
+  const [addStudyModalOpen, setAddStudyModalOpen] = useState(false);
   const { user }                      = useAuth();
 
   // Form state
@@ -226,14 +228,24 @@ export default function PlanosPage() {
           </div>
         </div>
 
-        <Button
-          id="btn-nova-disciplina"
-          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-          onClick={openDialog}
-        >
-          <Plus className="h-4 w-4" />
-          Nova Disciplina
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+            onClick={() => setAddStudyModalOpen(true)}
+          >
+            + Adicionar Estudo
+          </Button>
+
+          <Button
+            id="btn-nova-disciplina"
+            className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={openDialog}
+          >
+            <Plus className="h-4 w-4" />
+            Nova Disciplina
+          </Button>
+        </div>
       </div>
 
       {/* ------------------------------------------------------------------ */}
@@ -473,6 +485,12 @@ export default function PlanosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <AddStudyModal
+        open={addStudyModalOpen}
+        onClose={() => setAddStudyModalOpen(false)}
+        subjects={subjects.map(s => ({ subjectId: s.id, subjectTitle: s.title, subjectColor: s.color || "#6366f1" } as any))}
+      />
     </div>
   );
 }

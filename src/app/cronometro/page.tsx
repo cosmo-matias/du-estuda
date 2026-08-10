@@ -27,6 +27,7 @@ import { addReview } from "@/services/reviewService";
 import { getSubjectsByPlan } from "@/services/planSubjectService";
 import { getTopicsBySubject } from "@/services/topicService";
 import { completeCycleBlock } from "@/services/cycleService";
+import { AddStudyModal } from "@/components/estudo/AddStudyModal";
 import type { Topic, StudyCategory } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/contexts/PlanContext";
@@ -144,6 +145,11 @@ function CronometroContent() {
   const [notes, setNotes]                         = useState("");
   const [saving, setSaving]                       = useState(false);
   const [saveError, setSaveError]                 = useState("");
+  
+  // ---------------------------------------------------------------------- //
+  // Add Study Modal (Manual / Zen Mode exit)                                //
+  // ---------------------------------------------------------------------- //
+  const [addStudyModalOpen, setAddStudyModalOpen] = useState(false);
 
   // ---------------------------------------------------------------------- //
   // Derived values                                                          //
@@ -325,7 +331,7 @@ function CronometroContent() {
     setTimerState("paused");
     setIsPaused(true);
     if (elapsedSeconds > 0) {
-      openSessionDialog();
+      setAddStudyModalOpen(true);
     } else {
       resetTimer();
     }
@@ -336,6 +342,12 @@ function CronometroContent() {
     setElapsed(0);
     setPausedTime(0);
     setIsPaused(false);
+  }
+
+  function handleAddTime(minutes: number) {
+    if (mode === "pomodoro") {
+      setPomodoroDuration((prev) => prev + minutes);
+    }
   }
 
   // ---------------------------------------------------------------------- //
@@ -444,15 +456,113 @@ function CronometroContent() {
     }
   }
 
+  async function handleAddStudyModalSaved() {
+    if (activeBlockId && activePlan) {
+      await completeCycleBlock(activePlan.id, activeBlockId);
+      setActiveBlockId(null);
+    }
+    if (queryCycleIndex && queryCycleLength && activePlan) {
+      const cIndex = parseInt(queryCycleIndex, 10);
+      const cLength = parseInt(queryCycleLength, 10);
+      if (!isNaN(cIndex) && !isNaN(cLength) && cLength > 0) {
+        const nextPos = (cIndex + 1) % cLength;
+        await updatePlan(activePlan.id, { currentCyclePosition: nextPos });
+        setActivePlan({ ...activePlan, currentCyclePosition: nextPos });
+      }
+    }
+    resetTimer();
+    setAddStudyModalOpen(false);
+  }
+
   // ---------------------------------------------------------------------- //
   // Render                                                                  //
   // ---------------------------------------------------------------------- //
+  const isZenMode = timerState === "running" || timerState === "paused";
+
   return (
-    <div className="flex min-h-full flex-col items-center justify-center gap-8 py-12">
+    <div className="flex min-h-full flex-col items-center justify-center gap-8 py-12 relative">
+      {/* Top action bar */}
+      <div className="absolute top-4 right-4 flex gap-2 z-10">
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+          onClick={() => setAddStudyModalOpen(true)}
+        >
+          + Adicionar Estudo
+        </Button>
+      </div>
+
       {queryDuration && (
         <div className="flex items-center gap-2 rounded-full bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700">
           <BookOpen className="h-4 w-4" />
           Estudando Bloco do Ciclo: {queryDuration}min
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Zen Mode Overlay                                                   */}
+      {/* ------------------------------------------------------------------ */}
+      {isZenMode && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center text-white animate-in fade-in duration-300">
+          <div className="absolute top-12 flex flex-col items-center gap-2">
+            <span className="text-xl font-black tracking-tight text-white/90">DuEstuda</span>
+            <p className="text-sm font-medium text-white/50 uppercase tracking-widest mt-4">Você está estudando:</p>
+            <div className="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/5 mt-1">
+              <span className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
+              <span className="font-semibold">{subjectLabel}</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center justify-center flex-1 w-full max-w-lg">
+            <div className={`font-mono text-7xl md:text-9xl font-bold tracking-wider mb-12 tabular-nums transition-colors duration-500 ${isPaused ? "text-white/50" : "text-white"}`}>
+              {formatTime(displaySeconds)}
+            </div>
+
+            {mode === "pomodoro" && (
+              <div className="w-full max-w-xs space-y-2 mb-12">
+                <div className="h-1 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-indigo-500 transition-all duration-1000"
+                    style={{ width: `${pomodoroProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-8">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleStop}
+                className="h-16 w-16 rounded-full border-none bg-white/10 hover:bg-red-500/20 hover:text-red-400 text-white transition-all"
+                aria-label="Finalizar"
+              >
+                <Square className="h-6 w-6 fill-current" />
+              </Button>
+
+              <Button
+                size="icon"
+                onClick={timerState === "running" ? handlePause : handlePlay}
+                className={`h-24 w-24 rounded-full shadow-2xl transition-all ${timerState === "running" ? "bg-amber-500 hover:bg-amber-600 shadow-amber-500/20" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20"}`}
+              >
+                {timerState === "running" ? <Pause className="h-10 w-10 fill-current text-white" /> : <Play className="h-10 w-10 fill-current text-white ml-2" />}
+              </Button>
+
+              <div className="h-16 w-16" /> {/* Spacer to balance the layout */}
+            </div>
+          </div>
+
+          {mode === "pomodoro" && (
+            <div className="absolute bottom-12 flex flex-col items-center gap-4">
+              <p className="text-sm font-medium text-white/40">Adicione mais tempo se quiser continuar estudando:</p>
+              <div className="flex items-center gap-3">
+                <button onClick={() => handleAddTime(1)} className="px-5 py-2 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-sm font-semibold transition-colors">+1 min</button>
+                <button onClick={() => handleAddTime(5)} className="px-5 py-2 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-sm font-semibold transition-colors">+5 min</button>
+                <button onClick={() => handleAddTime(15)} className="px-5 py-2 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 text-sm font-semibold transition-colors">+15 min</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -744,173 +854,17 @@ function CronometroContent() {
           : "Sessão pausada. Pressione Play para continuar ou Stop (■) para salvar."}
       </p>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* Session registration Dialog                                         */}
-      {/* Controlled — no DialogTrigger (Base UI limitation, same pattern     */}
-      {/* used in SubjectCard).                                               */}
-      {/* ------------------------------------------------------------------ */}
-      <Dialog
-        open={isDialogOpen}
-        onOpenChange={(open) => {
-          if (!open && !saving) handleDiscardSession();
+      <AddStudyModal
+        open={addStudyModalOpen}
+        onClose={() => {
+          setAddStudyModalOpen(false);
+          if (elapsedSeconds > 0) resetTimer(); // manual discard via close
         }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-bold">
-              Registrar Sessão de Estudo
-            </DialogTitle>
-          </DialogHeader>
-
-          {/* Summary card */}
-          <div className="rounded-xl bg-emerald-50 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-200">
-                <BookOpen className="h-4 w-4 text-emerald-700" />
-              </div>
-              <span className="text-sm font-semibold text-emerald-800">
-                Resumo da sessão
-              </span>
-            </div>
-            <div className="space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Tempo total</span>
-                <span className="font-mono font-bold text-emerald-700">
-                  {formatTime(elapsedSeconds)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Disciplina</span>
-                <span className="font-medium text-slate-700">{subjectLabel}</span>
-              </div>
-              {selectedCategory && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Tipo de atividade</span>
-                  <span className="font-medium text-slate-700">
-                    {selectedCategory}
-                  </span>
-                </div>
-              )}
-              {mode === "pomodoro" && (
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Modo</span>
-                  <span className="font-medium text-slate-700">
-                    🍅 Pomodoro {pomodoroDuration} min
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Optional metrics */}
-          <div className="space-y-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-              Métricas opcionais
-            </p>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <label
-                  htmlFor="input-questions-total"
-                  className="block text-xs font-medium text-slate-600"
-                >
-                  Total de Questões
-                </label>
-                <Input
-                  id="input-questions-total"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={questionsTotal}
-                  onChange={(e) => setQuestionsTotal(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label
-                  htmlFor="input-questions-correct"
-                  className="block text-xs font-medium text-slate-600"
-                >
-                  Acertos
-                </label>
-                <Input
-                  id="input-questions-correct"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={questionsCorrect}
-                  onChange={(e) => setQuestionsCorrect(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label
-                  htmlFor="input-pages-read"
-                  className="block text-xs font-medium text-slate-600"
-                >
-                  Páginas
-                </label>
-                <Input
-                  id="input-pages-read"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={pagesRead}
-                  onChange={(e) => setPagesRead(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Notes textarea */}
-            <div className="space-y-1">
-              <label
-                htmlFor="textarea-notes"
-                className="block text-xs font-medium text-slate-600"
-              >
-                Comentários (opcional)
-              </label>
-              <textarea
-                id="textarea-notes"
-                rows={3}
-                placeholder="Como foi a sessão? Alguma dúvida ou insight?"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </div>
-
-            {saveError && (
-              <p className="text-xs text-red-500">{saveError}</p>
-            )}
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button
-              id="btn-discard-session"
-              variant="outline"
-              onClick={handleDiscardSession}
-              disabled={saving}
-            >
-              Descartar
-            </Button>
-            <Button
-              id="btn-save-session"
-              onClick={handleSaveSession}
-              disabled={saving}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando…
-                </>
-              ) : (
-                "Salvar Sessão"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        subjects={subjects.map((s) => ({ subjectId: s.id, subjectTitle: s.title, subjectColor: "#6366f1" } as any))}
+        initialSubjectId={selectedSubject}
+        initialDurationSeconds={elapsedSeconds}
+        onSaved={handleAddStudyModalSaved}
+      />
     </div>
   );
 }

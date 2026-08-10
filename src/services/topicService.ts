@@ -74,3 +74,12 @@ export async function deleteTopic(topicId: string): Promise<void> {
   const docRef = doc(db, "topics", topicId);
   await deleteDoc(docRef);
 }
+
+// ---------------------------------------------------------------------------
+// updateTopic
+// ---------------------------------------------------------------------------
+import { updateDoc } from "firebase/firestore";
+export async function updateTopic(topicId: string, data: Partial<Topic>): Promise<void> {
+  const docRef = doc(db, "topics", topicId);
+  await updateDoc(docRef, data);
+}

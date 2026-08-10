@@ -8,7 +8,9 @@ import { usePlan } from "@/contexts/PlanContext";
 import { getPendingReviewsByPlan, completeReview } from "@/services/reviewService";
 import { getSubjectsByPlan } from "@/services/planSubjectService";
 import type { Review } from "@/types";
+import type { PlanSubjectWithDetails } from "@/services/planSubjectService";
 import { Button } from "@/components/ui/button";
+import { AddStudyModal } from "@/components/estudo/AddStudyModal";
 
 interface ReviewWithSubject extends Review {
   subjectTitle: string;
@@ -21,8 +23,10 @@ export default function RevisoesPage() {
   const { activePlan } = usePlan();
 
   const [reviews, setReviews] = useState<ReviewWithSubject[]>([]);
+  const [subjects, setSubjects] = useState<PlanSubjectWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [addStudyModalOpen, setAddStudyModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,6 +44,7 @@ export default function RevisoesPage() {
         ]);
         
         if (!cancelled) {
+          setSubjects(fetchedSubjects);
           const today = new Date();
           // Filter to only show reviews scheduled for today or earlier
           const activeReviews = fetchedReviews
@@ -121,6 +126,16 @@ export default function RevisoesPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Revisões espaçadas agendadas automaticamente para otimizar sua retenção de memória.
           </p>
+        </div>
+        
+        <div className="flex-shrink-0 z-10">
+          <Button
+            variant="outline"
+            className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 bg-white"
+            onClick={() => setAddStudyModalOpen(true)}
+          >
+            + Adicionar Estudo
+          </Button>
         </div>
       </div>
 
@@ -205,6 +220,12 @@ export default function RevisoesPage() {
           </div>
         )}
       </div>
+
+      <AddStudyModal
+        open={addStudyModalOpen}
+        onClose={() => setAddStudyModalOpen(false)}
+        subjects={subjects}
+      />
     </div>
   );
 }

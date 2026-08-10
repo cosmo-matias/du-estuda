@@ -108,6 +108,16 @@ export interface StudySession {
   notes?: string;
   /** Tempo em que o cronômetro ficou pausado em segundos (opcional) */
   pausedDurationInSeconds?: number;
+  /** Material de estudo utilizado (opcional) */
+  material?: string;
+  /** Páginas lidas, incluindo início e fim (opcional) */
+  pagesReadDetails?: { start: number; end: number };
+  /** Detalhes de videoaula consumida (opcional) */
+  videoDetails?: { title: string; start: string; end: string };
+  /** Define se revisões espaçadas foram agendadas a partir desta sessão */
+  scheduleReviews?: boolean;
+  /** Define se o tópico foi marcado como teoria finalizada */
+  theoryCompleted?: boolean;
 }
 
 // -----------------------------------------------------------------------------
