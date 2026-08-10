@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { useState, useEffect } from "react";
-import { Plus, BookOpen, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Plus, BookOpen, Loader2, Pencil, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,14 +34,20 @@ const PLAN_ID = "plano-padrao-123";
 
 /** Paleta de cores pré-definidas para seleção de disciplina */
 const COLOR_OPTIONS = [
-  { label: "Esmeralda",  value: "#10b981" },
   { label: "Azul",       value: "#3b82f6" },
+  { label: "Esmeralda",  value: "#10b981" },
+  { label: "Roxo",       value: "#8b5cf6" },
   { label: "Âmbar",      value: "#f59e0b" },
-  { label: "Rosa",       value: "#ec4899" },
-  { label: "Violeta",    value: "#8b5cf6" },
   { label: "Vermelho",   value: "#ef4444" },
+  { label: "Rosa",       value: "#ec4899" },
   { label: "Ciano",      value: "#06b6d4" },
+  { label: "Teal",       value: "#14b8a6" },
+  { label: "Índigo",     value: "#6366f1" },
+  { label: "Lima",       value: "#84cc16" },
   { label: "Laranja",    value: "#f97316" },
+  { label: "Violeta",    value: "#a855f7" },
+  { label: "Slate",      value: "#64748b" },
+  { label: "Mostarda",   value: "#d97706" },
 ] as const;
 
 const DEFAULT_COLOR = COLOR_OPTIONS[0].value;
@@ -325,52 +331,32 @@ export default function PlanosPage() {
               )}
             </div>
 
-            {/* Color select */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="select-subject-color"
-                className="text-sm font-medium text-slate-700"
-              >
+            {/* Color grid */}
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-slate-700">
                 Cor de Identificação
               </label>
-              <Select
-                value={newColor}
-                onValueChange={(val) => val && setNewColor(val as string)}
-              >
-                <SelectTrigger id="select-subject-color" className="w-full">
-                  <SelectValue>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: newColor }}
-                      />
-                      <span>
-                        {COLOR_OPTIONS.find((c) => c.value === newColor)?.label}
-                      </span>
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {COLOR_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="h-3 w-3 rounded-full"
-                          style={{ backgroundColor: option.value }}
-                        />
-                        <span>{option.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Color preview strip */}
-              <div
-                className="h-2 w-full rounded-full transition-colors"
-                style={{ backgroundColor: newColor }}
-                aria-hidden="true"
-              />
+              <div className="grid grid-cols-7 gap-2 sm:grid-cols-7">
+                {COLOR_OPTIONS.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    onClick={() => setNewColor(color.value)}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
+                      newColor === color.value
+                        ? "ring-2 ring-emerald-600 ring-offset-2 shadow-md"
+                        : "ring-1 ring-black/10"
+                    }`}
+                    style={{ backgroundColor: color.value }}
+                    title={color.label}
+                    aria-label={`Selecionar cor ${color.label}`}
+                  >
+                    {newColor === color.value && (
+                      <Check className="h-4 w-4 text-white drop-shadow-md" strokeWidth={3} />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -425,31 +411,31 @@ export default function PlanosPage() {
               {formError && <p className="text-xs text-red-500">{formError}</p>}
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="select-edit-color" className="text-sm font-medium text-slate-700">
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-slate-700">
                 Cor de Identificação
               </label>
-              <Select value={editColor} onValueChange={(val) => val && setEditColor(val as string)}>
-                <SelectTrigger id="select-edit-color" className="w-full">
-                  <SelectValue>
-                    <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: editColor }} />
-                      <span>{COLOR_OPTIONS.find((c) => c.value === editColor)?.label || "Personalizada"}</span>
-                    </div>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {COLOR_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      <div className="flex items-center gap-2">
-                        <div className="h-3 w-3 rounded-full" style={{ backgroundColor: option.value }} />
-                        <span>{option.label}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="h-2 w-full rounded-full transition-colors" style={{ backgroundColor: editColor }} aria-hidden="true" />
+              <div className="grid grid-cols-7 gap-2 sm:grid-cols-7">
+                {COLOR_OPTIONS.map((color) => (
+                  <button
+                    key={color.value}
+                    type="button"
+                    onClick={() => setEditColor(color.value)}
+                    className={`flex h-8 w-8 items-center justify-center rounded-full transition-all hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 ${
+                      editColor === color.value
+                        ? "ring-2 ring-emerald-600 ring-offset-2 shadow-md"
+                        : "ring-1 ring-black/10"
+                    }`}
+                    style={{ backgroundColor: color.value }}
+                    title={color.label}
+                    aria-label={`Selecionar cor ${color.label}`}
+                  >
+                    {editColor === color.value && (
+                      <Check className="h-4 w-4 text-white drop-shadow-md" strokeWidth={3} />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
