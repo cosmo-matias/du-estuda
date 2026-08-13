@@ -15,7 +15,7 @@ interface PlanContextType {
 const PlanContext = createContext<PlanContextType | undefined>(undefined);
 
 export function PlanProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [plans, setPlans] = useState<StudyPlan[]>([]);
   const [activePlan, setActivePlan] = useState<StudyPlan | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,6 +33,8 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function loadPlans() {
+      if (authLoading) return;
+
       if (!user) {
         setPlans([]);
         setActivePlan(null);
@@ -79,7 +81,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, authLoading]);
 
   return (
     <PlanContext.Provider value={{ plans, activePlan, setActivePlan: handleSetActivePlan, loading }}>
