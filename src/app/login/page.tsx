@@ -31,14 +31,14 @@ export default function LoginPage() {
 
   if (loading || user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-slate-50">
+      <div className="flex h-[100dvh] w-full items-center justify-center bg-slate-50">
         <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen w-full items-center justify-center bg-slate-50 p-4">
+    <div className="flex h-[100dvh] w-full items-center justify-center bg-slate-50 p-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="flex flex-col items-center text-center pb-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 mb-4">

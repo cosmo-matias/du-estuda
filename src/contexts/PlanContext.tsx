@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPlans } from "@/services/studyPlanService";
 import type { StudyPlan } from "@/types";
@@ -20,14 +20,14 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [activePlan, setActivePlan] = useState<StudyPlan | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const handleSetActivePlan = (plan: StudyPlan | null) => {
+  const handleSetActivePlan = useCallback((plan: StudyPlan | null) => {
     setActivePlan(plan);
     if (plan) {
       localStorage.setItem('@duestuda:activePlanId', plan.id);
     } else {
       localStorage.removeItem('@duestuda:activePlanId');
     }
-  };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,8 +83,15 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, authLoading]);
 
+  const contextValue = useMemo(() => ({
+    plans,
+    activePlan,
+    setActivePlan: handleSetActivePlan,
+    loading
+  }), [plans, activePlan, handleSetActivePlan, loading]);
+
   return (
-    <PlanContext.Provider value={{ plans, activePlan, setActivePlan: handleSetActivePlan, loading }}>
+    <PlanContext.Provider value={contextValue}>
       {children}
     </PlanContext.Provider>
   );
