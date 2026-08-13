@@ -207,13 +207,13 @@ export function DashboardLayout({ children, pageTitle }: DashboardLayoutProps) {
   // Guard routing logic
   useEffect(() => {
     if (loading) return;
-    if (!user && pathname !== "/login") {
-      router.replace("/login");
+    if (!user && pathname !== "/login" && pathname !== "/login/") {
+      router.replace("/login/");
     }
   }, [user, loading, pathname, router]);
 
   // Se for a rota de login, não exibe Sidebar nem Topbar
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/login/") {
     return <>{children}</>;
   }
 
