@@ -14,7 +14,8 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user) {
+    if (loading) return;
+    if (user) {
       router.replace("/");
     }
   }, [user, loading, router]);

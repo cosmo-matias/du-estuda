@@ -206,7 +206,8 @@ export function DashboardLayout({ children, pageTitle }: DashboardLayoutProps) {
 
   // Guard routing logic
   useEffect(() => {
-    if (!loading && !user && pathname !== "/login") {
+    if (loading) return;
+    if (!user && pathname !== "/login") {
       router.replace("/login");
     }
   }, [user, loading, pathname, router]);

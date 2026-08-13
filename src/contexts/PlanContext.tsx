@@ -22,10 +22,14 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   const handleSetActivePlan = useCallback((plan: StudyPlan | null) => {
     setActivePlan(plan);
-    if (plan) {
-      localStorage.setItem('@duestuda:activePlanId', plan.id);
-    } else {
-      localStorage.removeItem('@duestuda:activePlanId');
+    try {
+      if (plan) {
+        localStorage.setItem('@duestuda:activePlanId', plan.id);
+      } else {
+        localStorage.removeItem('@duestuda:activePlanId');
+      }
+    } catch (e) {
+      console.warn("localStorage inacessível", e);
     }
   }, []);
 
@@ -38,7 +42,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       if (!user) {
         setPlans([]);
         setActivePlan(null);
-        localStorage.removeItem('@duestuda:activePlanId');
+        try {
+          localStorage.removeItem('@duestuda:activePlanId');
+        } catch(e) {}
         setLoading(false);
         return;
       }
@@ -49,7 +55,11 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           setPlans(fetchedPlans);
           if (fetchedPlans.length > 0) {
-            const savedPlanId = localStorage.getItem('@duestuda:activePlanId');
+            let savedPlanId: string | null = null;
+            try {
+              savedPlanId = localStorage.getItem('@duestuda:activePlanId');
+            } catch(e) {}
+
             let planToSet = fetchedPlans[0];
             
             if (savedPlanId) {
@@ -60,10 +70,14 @@ export function PlanProvider({ children }: { children: ReactNode }) {
             }
             
             setActivePlan(planToSet);
-            localStorage.setItem('@duestuda:activePlanId', planToSet.id);
+            try {
+              localStorage.setItem('@duestuda:activePlanId', planToSet.id);
+            } catch(e) {}
           } else {
             setActivePlan(null);
-            localStorage.removeItem('@duestuda:activePlanId');
+            try {
+              localStorage.removeItem('@duestuda:activePlanId');
+            } catch(e) {}
           }
         }
       } catch (error) {
