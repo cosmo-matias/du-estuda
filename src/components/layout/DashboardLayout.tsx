@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
+  Menu,
+  X,
   Home,
   BookOpen,
   Layers,
@@ -49,11 +51,11 @@ const navItems = [
 // ---------------------------------------------------------------------------
 // Sidebar
 // ---------------------------------------------------------------------------
-function Sidebar() {
+function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-60 flex-col bg-slate-950 text-slate-50 shrink-0">
+    <>
       {/* Logo / Brand */}
       <div className="flex items-center gap-2 px-6 py-5 border-b border-slate-900">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600">
@@ -74,6 +76,7 @@ function Sidebar() {
                 <Link
                   href={href}
                   prefetch={false}
+                  onClick={onNavigate}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                     isActive
@@ -96,6 +99,14 @@ function Sidebar() {
           © 2025 DuEstuda
         </p>
       </div>
+    </>
+  );
+}
+
+function Sidebar() {
+  return (
+    <aside className="hidden md:flex h-full w-60 flex-col bg-slate-950 text-slate-50 shrink-0">
+      <SidebarContent />
     </aside>
   );
 }
@@ -106,9 +117,10 @@ function Sidebar() {
 interface TopbarProps {
   title?: string;
   user: User;
+  onOpenMobileMenu: () => void;
 }
 
-function Topbar({ title = "Dashboard", user }: TopbarProps) {
+function Topbar({ title = "Dashboard", user, onOpenMobileMenu }: TopbarProps) {
   const { plans, activePlan, setActivePlan, loading: planLoading } = usePlan();
 
   async function handleLogout() {
@@ -125,10 +137,16 @@ function Topbar({ title = "Dashboard", user }: TopbarProps) {
     : "US";
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-6 shrink-0">
+    <header className="flex h-14 items-center justify-between border-b border-slate-200 bg-white px-4 md:px-6 shrink-0">
       {/* Left — page title & plan selector */}
-      <div className="flex items-center gap-4">
-        <h1 className="text-base font-semibold text-slate-800">{title}</h1>
+      <div className="flex items-center gap-3 md:gap-4">
+        <button 
+          onClick={onOpenMobileMenu}
+          className="md:hidden p-1 text-slate-500 hover:bg-slate-100 rounded-lg -ml-1 transition-colors"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <h1 className="text-base font-semibold text-slate-800 hidden sm:block">{title}</h1>
         
         <div className="h-4 w-px bg-slate-300 hidden sm:block" />
         
@@ -203,6 +221,7 @@ export function DashboardLayout({ children, pageTitle }: DashboardLayoutProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Guard routing logic
   useEffect(() => {
@@ -227,13 +246,34 @@ export function DashboardLayout({ children, pageTitle }: DashboardLayoutProps) {
 
   return (
     <div className="flex h-[100dvh] w-full overflow-hidden">
+      {/* Mobile Sidebar Overlay */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex md:hidden">
+          <div 
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" 
+            onClick={() => setIsMobileMenuOpen(false)} 
+          />
+          <div className="relative z-50 h-full w-64 bg-slate-950 flex flex-col shadow-2xl animate-in slide-in-from-left-4 duration-200">
+            <div className="absolute right-4 top-4 z-50">
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)} 
+                className="text-slate-400 hover:text-white p-1 rounded-md bg-slate-900 hover:bg-slate-800 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <SidebarContent onNavigate={() => setIsMobileMenuOpen(false)} />
+          </div>
+        </div>
+      )}
+
       <Sidebar />
 
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar title={pageTitle} user={user} />
+        <Topbar title={pageTitle} user={user} onOpenMobileMenu={() => setIsMobileMenuOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto bg-slate-50 p-6">
+        <main className="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6">
           {children}
         </main>
       </div>
