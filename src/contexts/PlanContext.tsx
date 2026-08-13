@@ -20,6 +20,15 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const [activePlan, setActivePlan] = useState<StudyPlan | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const handleSetActivePlan = (plan: StudyPlan | null) => {
+    setActivePlan(plan);
+    if (plan) {
+      localStorage.setItem('@duestuda:activePlanId', plan.id);
+    } else {
+      localStorage.removeItem('@duestuda:activePlanId');
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -27,6 +36,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       if (!user) {
         setPlans([]);
         setActivePlan(null);
+        localStorage.removeItem('@duestuda:activePlanId');
         setLoading(false);
         return;
       }
@@ -36,8 +46,22 @@ export function PlanProvider({ children }: { children: ReactNode }) {
         const fetchedPlans = await getPlans(user.uid);
         if (!cancelled) {
           setPlans(fetchedPlans);
-          if (fetchedPlans.length > 0 && !activePlan) {
-            setActivePlan(fetchedPlans[0]);
+          if (fetchedPlans.length > 0) {
+            const savedPlanId = localStorage.getItem('@duestuda:activePlanId');
+            let planToSet = fetchedPlans[0];
+            
+            if (savedPlanId) {
+              const matchedPlan = fetchedPlans.find(p => p.id === savedPlanId);
+              if (matchedPlan) {
+                planToSet = matchedPlan;
+              }
+            }
+            
+            setActivePlan(planToSet);
+            localStorage.setItem('@duestuda:activePlanId', planToSet.id);
+          } else {
+            setActivePlan(null);
+            localStorage.removeItem('@duestuda:activePlanId');
           }
         }
       } catch (error) {
@@ -58,7 +82,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   return (
-    <PlanContext.Provider value={{ plans, activePlan, setActivePlan, loading }}>
+    <PlanContext.Provider value={{ plans, activePlan, setActivePlan: handleSetActivePlan, loading }}>
       {children}
     </PlanContext.Provider>
   );
