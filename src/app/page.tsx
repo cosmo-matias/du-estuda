@@ -17,6 +17,7 @@ import {
 } from "recharts";
 import { getSessionsByPlan, deleteStudySession } from "@/services/sessionService";
 import { getSubjects } from "@/services/planService";
+import { getSubjectsByPlan, type PlanSubjectWithDetails } from "@/services/planSubjectService";
 import { getTopicsByPlan } from "@/services/topicService";
 import type { StudySession, Subject, Topic } from "@/types";
 import { useAuth } from "@/contexts/AuthContext";
@@ -82,6 +83,8 @@ export default function DashboardPage() {
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [habitOffset, setHabitOffset] = useState(0);
   const [manualQuoteOffset, setManualQuoteOffset] = useState(0);
+  
+  const [planSubjects, setPlanSubjects] = useState<PlanSubjectWithDetails[]>([]);
 
   const { user }              = useAuth();
   const { activePlan }        = usePlan();
@@ -98,15 +101,17 @@ export default function DashboardPage() {
       }
       try {
         setLoading(true);
-        const [fetchedSessions, fetchedSubjects, fetchedTopics] = await Promise.all([
+        const [fetchedSessions, fetchedSubjects, fetchedTopics, fetchedPlanSubjects] = await Promise.all([
           getSessionsByPlan(user.uid, activePlan.id),
           getSubjects(user.uid, activePlan.id),
-          getTopicsByPlan(activePlan.id)
+          getTopicsByPlan(activePlan.id),
+          getSubjectsByPlan(activePlan.id)
         ]);
         if (!cancelled) {
           setSessions(fetchedSessions);
           setSubjects(fetchedSubjects);
           setTopics(fetchedTopics);
+          setPlanSubjects(fetchedPlanSubjects);
         }
       } catch (err) {
         console.error("Erro ao carregar dados do dashboard:", err);
@@ -256,18 +261,25 @@ export default function DashboardPage() {
 
     const grouped: Record<string, number> = {};
     todaysSessions.forEach((s) => {
-      grouped[s.subjectId] = (grouped[s.subjectId] || 0) + s.durationInSeconds;
+      // Resolve legacy IDs
+      let trueSubjectId = s.subjectId;
+      const pivotMatch = planSubjects.find(ps => ps.id === s.subjectId);
+      if (pivotMatch) {
+        trueSubjectId = pivotMatch.subjectId;
+      }
+      grouped[trueSubjectId] = (grouped[trueSubjectId] || 0) + s.durationInSeconds;
     });
 
     return Object.entries(grouped).map(([subjectId, totalSeconds], index) => {
       const subject = subjects.find((sub) => sub.id === subjectId);
+      const pivotMatch = planSubjects.find(ps => ps.subjectId === subjectId);
       return {
-        name: subject?.title || "Desconhecida",
+        name: subject?.title || pivotMatch?.subjectTitle || "Desconhecida",
         value: Math.round(totalSeconds / 60),
-        color: subject?.color || PIE_COLORS[index % PIE_COLORS.length],
+        color: subject?.color || pivotMatch?.subjectColor || PIE_COLORS[index % PIE_COLORS.length],
       };
     }).filter(item => item.value > 0);
-  }, [sessions, subjects]);
+  }, [sessions, subjects, planSubjects]);
 
   // 8. Últimas sessões
   const recentSessions = useMemo(() => {
@@ -707,14 +719,15 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {recentSessions.map((session) => {
-                const subject = subjects.find((s) => s.id === session.subjectId);
-                const subjectObj = activePlan.subjects?.find((s) => 
-                  s.id === session.subjectId || 
-                  (s as any).subjectId === session.subjectId || 
-                  (s as any).planSubjectId === session.subjectId ||
-                  s.id === (session as any).planSubjectId
-                );
-                const subjectName = subjectObj?.name || "Disciplina Removida";
+                // Resolve legacy IDs
+                let trueSubjectId = session.subjectId;
+                const pivotMatch = planSubjects.find(ps => ps.id === session.subjectId);
+                if (pivotMatch) {
+                  trueSubjectId = pivotMatch.subjectId;
+                }
+                
+                const subject = subjects.find((s) => s.id === trueSubjectId);
+                const subjectName = subject?.title || pivotMatch?.subjectTitle || "Disciplina Removida";
                 const sessionDate = new Date(session.date).toLocaleDateString("pt-BR", {
                   day: "2-digit",
                   month: "short",
