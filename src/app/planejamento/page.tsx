@@ -12,6 +12,7 @@ import {
   GripVertical,
   Clock,
   TrendingUp,
+  Pencil,
 } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
@@ -147,6 +148,7 @@ interface DraggableBlockProps {
   onDragOver: (i: number) => void;
   onDrop: () => void;
   onPlay: () => void;
+  onDurationChange?: (newDuration: number) => void;
   totalBlocks: number;
 }
 
@@ -159,8 +161,10 @@ function DraggableBlock({
   onDragOver,
   onDrop,
   onPlay,
+  onDurationChange,
   totalBlocks,
 }: DraggableBlockProps) {
+  const [isEditing, setIsEditing] = useState(false);
   const color = subject?.subjectColor ?? "#6366f1";
 
   return (
@@ -198,14 +202,48 @@ function DraggableBlock({
       </span>
 
       {/* Subject info */}
-      <div className="flex-1 min-w-0">
-        <p className={`truncate text-sm font-semibold ${isCurrent ? "text-indigo-800" : "text-slate-800"}`}>
-          {subject?.subjectTitle ?? "Disciplina"}
-        </p>
-        {block.durationMinutes && (
-          <p className="text-[11px] text-slate-400 tabular-nums">
-            0min / {block.durationMinutes}min
+      <div className="flex-1 min-w-0 flex items-center justify-between">
+        <div className="flex flex-col min-w-0">
+          <p className={`truncate text-sm font-semibold ${isCurrent ? "text-indigo-800" : "text-slate-800"}`}>
+            {subject?.subjectTitle ?? "Disciplina"}
           </p>
+          {block.durationMinutes && (
+            <p className="text-[11px] text-slate-400 tabular-nums">
+              0min / {block.durationMinutes}min
+            </p>
+          )}
+        </div>
+
+        {/* EDIT BUTTON AND INPUT */}
+        {onDurationChange && (
+          <div className="flex items-center gap-1 shrink-0 ml-2 mr-2">
+            {isEditing ? (
+              <input 
+                type="number"
+                autoFocus
+                defaultValue={block.durationMinutes}
+                onBlur={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val) && val > 0 && val !== block.durationMinutes) {
+                    onDurationChange(val);
+                  }
+                  setIsEditing(false);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur();
+                }}
+                className="w-14 text-xs font-bold text-center border border-indigo-300 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            ) : (
+              <button 
+                onClick={() => setIsEditing(true)} 
+                className="text-slate-400 hover:text-indigo-600 p-1"
+                title="Editar tempo"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -370,6 +408,24 @@ export default function PlanejamentoPage() {
     dragIndexRef.current = null;
     setHoverIndex(null);
   }, [hoverIndex, activePlan, hasCustomCycle]);
+
+  function handleDurationChange(index: number, newDuration: number) {
+    if (!activePlan || !hasCustomCycle) return;
+    
+    setLocalBlocks((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], durationMinutes: newDuration };
+      
+      // Persist to Firestore
+      const newSeq = next.map((b) => ({
+        id: b.id, subjectId: b.subjectId,
+        durationMinutes: b.durationMinutes ?? 0, completed: false,
+      }));
+      updateCycleSequence(activePlan.id, newSeq).catch(console.error);
+      
+      return next;
+    });
+  }
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -591,7 +647,30 @@ export default function PlanejamentoPage() {
                 <GripVertical className="h-3 w-3" /> Arraste para reordenar
               </span>
             )}
-          </div>
+            </div>
+
+            {/* PAINEL DE SALDO */}
+            {hasCustomCycle && cycleConfig && (() => {
+              const targetTotalTime = cycleConfig.weeklyHours * 60;
+              const currentTotalTime = localBlocks.reduce((acc, b) => acc + (b.durationMinutes ?? 0), 0);
+              const balance = currentTotalTime - targetTotalTime;
+              
+              let alertClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
+              let text = "Tempo perfeitamente distribuído";
+              if (balance < 0) {
+                alertClass = "bg-amber-100 text-amber-800 border-amber-200";
+                text = `Falta alocar ${Math.abs(balance)} min na meta semanal (${cycleConfig.weeklyHours}h)`;
+              } else if (balance > 0) {
+                alertClass = "bg-red-100 text-red-800 border-red-200";
+                text = `Ultrapassou ${balance} min da meta semanal (${cycleConfig.weeklyHours}h)`;
+              }
+              
+              return (
+                <div className={`text-xs font-medium px-3 py-2 rounded-lg border ${alertClass} mb-1 transition-colors duration-300`}>
+                  {text}
+                </div>
+              );
+            })()}
 
           <div className="flex flex-col gap-2">
             {localBlocks.map((block, index) => (
@@ -616,6 +695,7 @@ export default function PlanejamentoPage() {
                       `/cronometro?subjectId=${block.subjectId}&blockId=${block.id}&duration=${block.durationMinutes ?? 0}&cycleIndex=${index}&cycleLength=${localBlocks.length}`
                     )
                   }
+                  onDurationChange={(newDuration) => handleDurationChange(index, newDuration)}
                   totalBlocks={localBlocks.length}
                 />
               </div>

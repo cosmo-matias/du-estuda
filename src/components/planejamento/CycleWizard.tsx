@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { Check, ChevronLeft, ChevronRight, Loader2, Wand2, Pencil } from "lucide-react";
+import { useState, useCallback } from "react";
+import { Check, ChevronLeft, ChevronRight, Loader2, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -102,11 +102,6 @@ export function CycleWizard({
   const [minBlock,      setMinBlock]       = useState(DEFAULT_MIN_BLOCK);
   const [maxBlock,      setMaxBlock]       = useState(DEFAULT_MAX_BLOCK);
 
-  // Step 3 — Editable cycle
-  const [editableCycle, setEditableCycle] = useState<CycleBlock[]>([]);
-  const [targetTotalTime, setTargetTotalTime] = useState(0);
-  const [editingBlockIdx, setEditingBlockIdx] = useState<number | null>(null);
-
   // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
@@ -166,9 +161,6 @@ export function CycleWizard({
       };
 
       const configPayload = buildCycleConfig(cycleInput, selectedDays);
-      // Override with user's manual edits
-      configPayload.cycleSequence = editableCycle;
-
       const saved = await saveCycleConfig(configPayload);
       onSaved(saved);
       onClose();
@@ -190,41 +182,23 @@ export function CycleWizard({
   // ---------------------------------------------------------------------------
   // Preview (step 3)
   // ---------------------------------------------------------------------------
-  const cycleDependencies = JSON.stringify({
-    weeklyHours,
-    minBlock,
-    maxBlock,
-    weights,
-    selectedDays,
-    ids: Array.from(selectedIds)
-  });
-
-  useEffect(() => {
-    if (step === 3 && selectedSubjects.length > 0) {
-      const generated = buildCycleConfig(
-        {
-          planId,
-          weeklyHours,
-          minBlockMinutes: minBlock,
-          maxBlockMinutes: maxBlock,
-          subjectWeights: selectedSubjects.map((s) => ({
-            subjectId: s.subjectId,
-            weight: weights[s.subjectId] ?? 3,
-          })),
-          subjects: selectedSubjects,
-        },
-        selectedDays
-      ).cycleSequence;
-      setEditableCycle(generated);
-      const total = generated.reduce((acc, block) => acc + (block.durationMinutes ?? 0), 0);
-      setTargetTotalTime(total);
-      setEditingBlockIdx(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cycleDependencies, step]);
-
-  const currentTotalTime = editableCycle.reduce((acc, block) => acc + (block.durationMinutes ?? 0), 0);
-  const balance = currentTotalTime - targetTotalTime;
+  const previewBlocks: CycleBlock[] = (() => {
+    if (step !== 3 || selectedSubjects.length === 0) return [];
+    return buildCycleConfig(
+      {
+        planId,
+        weeklyHours,
+        minBlockMinutes: minBlock,
+        maxBlockMinutes: maxBlock,
+        subjectWeights: selectedSubjects.map((s) => ({
+          subjectId: s.subjectId,
+          weight: weights[s.subjectId] ?? 3,
+        })),
+        subjects: selectedSubjects,
+      },
+      selectedDays
+    ).cycleSequence;
+  })();
 
   // ---------------------------------------------------------------------------
   // Render
@@ -535,86 +509,26 @@ export function CycleWizard({
 
 
             {/* Preview */}
-            {editableCycle.length > 0 && (
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-3 mt-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
-                    Pré-visualização do ciclo
-                  </p>
-                  <p className="text-sm text-indigo-800">
-                    <span className="font-bold">{editableCycle.length}</span> blocos
-                  </p>
-                </div>
-
-                {/* Painel de Saldo */}
-                {(() => {
-                  let alertClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
-                  let text = "Tempo perfeitamente distribuído";
-                  if (balance < 0) {
-                    alertClass = "bg-amber-100 text-amber-800 border-amber-200";
-                    text = `Falta alocar ${Math.abs(balance)} min`;
-                  } else if (balance > 0) {
-                    alertClass = "bg-red-100 text-red-800 border-red-200";
-                    text = `Ultrapassou ${balance} min da meta original`;
-                  }
-                  
-                  return (
-                    <div className={`text-xs font-medium px-3 py-2 rounded-lg border ${alertClass}`}>
-                      {text}
-                    </div>
-                  );
-                })()}
-
-                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
-                  {editableCycle.map((block, idx) => {
+            {previewBlocks.length > 0 && (
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                  Pré-visualização do ciclo
+                </p>
+                <p className="text-sm text-indigo-800">
+                  <span className="font-bold">{previewBlocks.length}</span> blocos ·{" "}
+                  <span className="font-bold">{cycleToHours(previewBlocks)}h</span> totais
+                </p>
+                <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                  {previewBlocks.map((block, idx) => {
                     const subj = subjects.find((s) => s.subjectId === block.subjectId);
                     return (
-                      <div key={`${block.id}-${idx}`} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 shadow-sm">
-                        <div className="flex items-center gap-2">
-                           <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: subj?.subjectColor || "#6366f1" }} />
-                           <span className="text-xs font-semibold text-slate-700 truncate max-w-[150px] sm:max-w-[200px]">
-                             {subj?.subjectTitle}
-                           </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 shrink-0">
-                           {editingBlockIdx === idx ? (
-                             <input 
-                               type="number"
-                               autoFocus
-                               defaultValue={block.durationMinutes}
-                               onBlur={(e) => {
-                                  const val = parseInt(e.target.value, 10);
-                                  if (!isNaN(val) && val > 0) {
-                                    setEditableCycle(prev => prev.map((b, i) => i === idx ? { ...b, durationMinutes: val } : b));
-                                  }
-                                  setEditingBlockIdx(null);
-                               }}
-                               onKeyDown={(e) => {
-                                  if (e.key === 'Enter') e.currentTarget.blur();
-                               }}
-                               className="w-16 text-xs font-bold text-center border border-indigo-300 rounded px-1 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                             />
-                           ) : (
-                             <span className="text-xs font-bold text-slate-600 min-w-[32px] text-right">
-                               {block.durationMinutes}m
-                             </span>
-                           )}
-                           
-                           {editingBlockIdx !== idx && (
-                             <button 
-                               onClick={() => setEditingBlockIdx(idx)} 
-                               className="text-slate-400 hover:text-indigo-600 p-1"
-                               title="Editar duração"
-                             >
-                               <Pencil className="h-3.5 w-3.5" />
-                             </button>
-                           )}
-                           {editingBlockIdx === idx && (
-                             <div className="w-5" /> // spacer to keep layout from shifting
-                           )}
-                        </div>
-                      </div>
+                      <span
+                        key={`${block.id}-${idx}`}
+                        className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                        style={{ backgroundColor: subj?.subjectColor || "#6366f1" }}
+                      >
+                        {subj?.subjectTitle?.split(" ")[0] ?? "?"} · {block.durationMinutes}m
+                      </span>
                     );
                   })}
                 </div>
