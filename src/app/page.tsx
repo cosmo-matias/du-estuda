@@ -271,15 +271,17 @@ export default function DashboardPage() {
     });
 
     return Object.entries(grouped).map(([subjectId, totalSeconds], index) => {
-      const subject = subjects.find((sub) => sub.id === subjectId);
-      const pivotMatch = planSubjects.find(ps => ps.subjectId === subjectId);
+      const pivotMatch = planSubjects.find(ps => ps.subjectId === subjectId || ps.id === subjectId);
+      const subject = (activePlan?.subjects?.find((sub) => sub.id === subjectId || (sub as any).planSubjectId === subjectId) 
+                      || subjects.find(s => s.id === subjectId)
+                      || pivotMatch) as any;
       return {
-        name: subject?.title || pivotMatch?.subjectTitle || "Desconhecida",
+        name: subject?.title || subject?.name || pivotMatch?.subjectTitle || "Desconhecida",
         value: Math.round(totalSeconds / 60),
         color: subject?.color || pivotMatch?.subjectColor || PIE_COLORS[index % PIE_COLORS.length],
       };
     }).filter(item => item.value > 0);
-  }, [sessions, subjects, planSubjects]);
+  }, [sessions, subjects, planSubjects, activePlan]);
 
   // 8. Últimas sessões
   const recentSessions = useMemo(() => {

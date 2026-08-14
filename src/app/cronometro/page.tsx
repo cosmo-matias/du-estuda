@@ -264,8 +264,11 @@ function CronometroContent() {
     if (querySubjectId && subjects.length > 0) {
       // Allow matching against both true subjectId and planSubjectId
       const matched = subjects.find((s) => s.id === querySubjectId || (s as any).planSubjectId === querySubjectId);
-      if (matched && !selectedSubject) {
-        setSelectedSubject(matched.id);
+      if (matched && (selectedSubject === querySubjectId || !selectedSubject)) {
+        // If it was initialized to the pivot hash from URL, correct it to the true ID
+        if (selectedSubject !== matched.id) {
+          setSelectedSubject(matched.id);
+        }
       }
     }
   }, [querySubjectId, subjects, selectedSubject]);
