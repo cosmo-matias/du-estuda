@@ -721,6 +721,8 @@ function CronometroContent() {
         }}
         subjects={subjects.map((s) => ({ subjectId: s.id, subjectTitle: s.title, subjectColor: "#6366f1" } as any))}
         initialSubjectId={selectedSubject}
+        initialCategory={(selectedCategory as StudyCategory) || undefined}
+        initialTopicId={selectedTopic || undefined}
         initialDurationSeconds={elapsedSeconds}
         onSaved={handleAddStudyModalSaved}
       />

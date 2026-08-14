@@ -19,6 +19,8 @@ interface AddStudyModalProps {
   onClose: () => void;
   subjects: PlanSubjectWithDetails[];
   initialSubjectId?: string;
+  initialCategory?: StudyCategory;
+  initialTopicId?: string;
   initialDurationSeconds?: number;
   onSaved?: () => void;
 }
@@ -30,6 +32,8 @@ export function AddStudyModal({
   onClose,
   subjects,
   initialSubjectId,
+  initialCategory,
+  initialTopicId,
   initialDurationSeconds,
   onSaved,
 }: AddStudyModalProps) {
@@ -78,12 +82,14 @@ export function AddStudyModal({
   useEffect(() => {
     if (open) {
       if (initialSubjectId) setSubjectId(initialSubjectId);
+      if (initialCategory) setCategory(initialCategory);
+      if (initialTopicId) setTopicId(initialTopicId);
       if (initialDurationSeconds) {
         const m = Math.floor(initialDurationSeconds / 60);
         setDurationStr(m.toString());
       }
     }
-  }, [open, initialSubjectId, initialDurationSeconds]);
+  }, [open, initialSubjectId, initialCategory, initialTopicId, initialDurationSeconds]);
 
   // Fetch topics
   useEffect(() => {
