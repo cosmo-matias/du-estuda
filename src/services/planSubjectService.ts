@@ -44,6 +44,12 @@ export async function getSubjectsByPlan(planId: string): Promise<PlanSubjectWith
         subjectTitle: subjectData.title,
         subjectColor: subjectData.color,
       });
+    } else {
+      result.push({
+        ...ps,
+        subjectTitle: "Disciplina (Metadados Ausentes)",
+        subjectColor: "#94a3b8", // slate-400
+      });
     }
   }
 

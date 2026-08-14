@@ -240,7 +240,11 @@ function CronometroContent() {
         setLoadingSubjects(true);
         const data = await getSubjectsByPlan(activePlan.id);
         if (!cancelled) {
-          setSubjects(data.map(ps => ({ id: ps.subjectId, title: ps.subjectTitle })));
+          setSubjects(data.map(ps => ({ 
+            id: ps.subjectId, 
+            title: ps.subjectTitle,
+            planSubjectId: ps.id 
+          })));
         }
       } catch (err) {
         console.error("Erro ao carregar disciplinas:", err);
@@ -258,12 +262,20 @@ function CronometroContent() {
   // ---------------------------------------------------------------------- //
   useEffect(() => {
     if (querySubjectId && subjects.length > 0) {
-      const exists = subjects.find((s) => s.id === querySubjectId);
-      if (exists && !selectedSubject) {
-        setSelectedSubject(querySubjectId);
+      // Allow matching against both true subjectId and planSubjectId
+      const matched = subjects.find((s) => s.id === querySubjectId || (s as any).planSubjectId === querySubjectId);
+      if (matched && !selectedSubject) {
+        setSelectedSubject(matched.id);
       }
     }
   }, [querySubjectId, subjects, selectedSubject]);
+
+  useEffect(() => {
+    const queryTopicId = searchParams.get("topicId");
+    if (queryTopicId && !selectedTopic) {
+      setSelectedTopic(queryTopicId);
+    }
+  }, [searchParams, selectedTopic]);
 
   useEffect(() => {
     if (queryBlockId) {

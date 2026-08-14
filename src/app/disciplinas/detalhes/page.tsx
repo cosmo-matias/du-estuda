@@ -392,9 +392,11 @@ function SubjectDashboardContent() {
                           <td className="px-4 py-3 text-center text-slate-700 font-semibold">{qT > 0 ? `${acc}%` : "-"}</td>
                           <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{lastStudyDate}</td>
                           <td className="px-4 py-3 text-right whitespace-nowrap">
-                            <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 mr-2 h-8 px-2 font-semibold">
-                              Adicionar
-                            </Button>
+                            <Link href={`/cronometro?subjectId=${subject?.id}&topicId=${topic.id}`} passHref>
+                              <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 mr-2 h-8 px-2 font-semibold">
+                                Adicionar
+                              </Button>
+                            </Link>
                             <Button
                               variant="ghost"
                               size="icon"

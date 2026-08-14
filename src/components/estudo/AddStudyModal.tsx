@@ -84,7 +84,7 @@ export function AddStudyModal({
       if (initialSubjectId) setSubjectId(initialSubjectId);
       if (initialCategory) setCategory(initialCategory);
       if (initialTopicId) setTopicId(initialTopicId);
-      if (initialDurationSeconds) {
+      if (initialDurationSeconds !== undefined) {
         const m = Math.floor(initialDurationSeconds / 60);
         setDurationStr(m.toString());
       }
