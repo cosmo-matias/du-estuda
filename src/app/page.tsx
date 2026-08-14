@@ -708,6 +708,7 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {recentSessions.map((session) => {
                 const subject = subjects.find((s) => s.id === session.subjectId);
+                const subjectName = activePlan.subjects?.find((s) => s.id === session.subjectId)?.name || "Disciplina Removida";
                 const sessionDate = new Date(session.date).toLocaleDateString("pt-BR", {
                   day: "2-digit",
                   month: "short",
@@ -726,7 +727,7 @@ export default function DashboardPage() {
                       />
                       <div>
                         <p className="font-medium text-slate-800 text-sm line-clamp-1">
-                          {subject?.title || "Disciplina Desconhecida"}
+                          {subjectName}
                         </p>
                         <p className="text-xs text-slate-500">
                           {sessionDate} • {session.category}

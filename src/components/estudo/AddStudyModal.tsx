@@ -315,7 +315,10 @@ export function AddStudyModal({
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {subjects.map(s => <SelectItem key={s.subjectId} value={s.subjectId}>{s.subjectTitle}</SelectItem>)}
+                  {subjects.map(s => {
+                    const realName = activePlan?.subjects?.find(a => a.id === s.subjectId)?.name || s.subjectTitle || "Disciplina Removida";
+                    return <SelectItem key={s.subjectId} value={s.subjectId}>{realName}</SelectItem>;
+                  })}
                 </SelectContent>
               </Select>
             </div>
