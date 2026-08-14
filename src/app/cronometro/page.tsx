@@ -99,6 +99,9 @@ function CronometroContent() {
   const queryCycleIndex = searchParams.get("cycleIndex");
   const queryCycleLength = searchParams.get("cycleLength");
   
+  const parsedDuration = safeInt(queryDuration || "") || 0;
+  const isCountdown = parsedDuration > 0;
+
   const { user }                              = useAuth();
   const { activePlan, setActivePlan }         = usePlan();
 
@@ -114,7 +117,7 @@ function CronometroContent() {
   // Timer                                                                   //
   // ---------------------------------------------------------------------- //
   const [timerState, setTimerState]   = useState<TimerState>("idle");
-  const [elapsedSeconds, setElapsed]  = useState(0);
+  const [elapsedSeconds, setElapsed]  = useState(isCountdown ? parsedDuration * 60 : 0);
   const [pausedTime, setPausedTime]   = useState(0);
   const [isPaused, setIsPaused]       = useState(false);
   const intervalRef                   = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -146,8 +149,9 @@ function CronometroContent() {
   const pomodoroTotalSec = pomodoroDuration * 60;
 
   /** Seconds shown on the clock face */
-  const displaySeconds =
-    mode === "free"
+  const displaySeconds = isCountdown
+    ? Math.max(0, elapsedSeconds)
+    : mode === "free"
       ? elapsedSeconds
       : Math.max(0, pomodoroTotalSec - elapsedSeconds);
 
@@ -161,12 +165,12 @@ function CronometroContent() {
       : 0;
 
   // ---------------------------------------------------------------------- //
-  // Timer interval — increments elapsedSeconds every second when running   //
+  // Timer interval — increments or decrements elapsedSeconds when running    //
   // ---------------------------------------------------------------------- //
   useEffect(() => {
     if (timerState === "running") {
       intervalRef.current = setInterval(
-        () => setElapsed((prev) => prev + 1),
+        () => setElapsed((prev) => isCountdown ? Math.max(0, prev - 1) : prev + 1),
         1000
       );
     } else {
@@ -207,18 +211,19 @@ function CronometroContent() {
   }, [isPaused]);
 
 
-  // Auto-finish Pomodoro when time runs out
+  // Auto-finish Pomodoro or Countdown when time runs out
   useEffect(() => {
-    if (
-      mode === "pomodoro" &&
-      timerState === "running" &&
-      elapsedSeconds >= pomodoroTotalSec
-    ) {
-      setTimerState("paused");
-      setAddStudyModalOpen(true);
+    if (timerState === "running") {
+      if (isCountdown && elapsedSeconds <= 0) {
+        setTimerState("paused");
+        setAddStudyModalOpen(true);
+      } else if (!isCountdown && mode === "pomodoro" && elapsedSeconds >= pomodoroTotalSec) {
+        setTimerState("paused");
+        setAddStudyModalOpen(true);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elapsedSeconds, mode, timerState, pomodoroTotalSec]);
+  }, [elapsedSeconds, mode, timerState, pomodoroTotalSec, isCountdown]);
 
   // ---------------------------------------------------------------------- //
   // Load subjects from Firestore on mount                                   //
@@ -717,13 +722,16 @@ function CronometroContent() {
         open={addStudyModalOpen}
         onClose={() => {
           setAddStudyModalOpen(false);
-          if (elapsedSeconds > 0) resetTimer(); // manual discard via close
+          const studiedSeconds = isCountdown 
+            ? (parsedDuration * 60) - Math.max(0, elapsedSeconds) 
+            : elapsedSeconds;
+          if (studiedSeconds > 0) resetTimer(); // manual discard via close
         }}
         subjects={subjects.map((s) => ({ subjectId: s.id, subjectTitle: s.title, subjectColor: "#6366f1" } as any))}
         initialSubjectId={selectedSubject}
         initialCategory={(selectedCategory as StudyCategory) || undefined}
         initialTopicId={selectedTopic || undefined}
-        initialDurationSeconds={elapsedSeconds}
+        initialDurationSeconds={isCountdown ? (parsedDuration * 60) - Math.max(0, elapsedSeconds) : elapsedSeconds}
         onSaved={handleAddStudyModalSaved}
       />
     </div>
