@@ -142,7 +142,14 @@ export function AddStudyModal({
   const handleSave = async () => {
     if (!user || !activePlan) return;
     const durSec = parseDurationToSeconds(durationStr);
-    if (!subjectId || durSec <= 0) {
+    
+    // Blindagem de Chaves Estrangeiras (evita envio de objetos)
+    const safeSubjectId = typeof subjectId === "string" ? subjectId : String(subjectId);
+    const safeTopicId = topicId ? (typeof topicId === "string" ? topicId : String(topicId)) : undefined;
+
+    console.log("[AddStudyModal] Validating FKs before save:", { safeSubjectId, safeTopicId });
+
+    if (!safeSubjectId || durSec <= 0) {
       alert("Selecione uma disciplina e informe o tempo de estudo (ex: 45 para minutos).");
       return;
     }
@@ -154,7 +161,7 @@ export function AddStudyModal({
       const sessionPayload: any = {
         userId: user.uid,
         planId: activePlan.id,
-        subjectId,
+        subjectId: safeSubjectId,
         date: selectedDate,
         durationInSeconds: durSec,
         category,
@@ -162,7 +169,7 @@ export function AddStudyModal({
         theoryCompleted,
       };
 
-      if (topicId) sessionPayload.topicId = topicId;
+      if (safeTopicId) sessionPayload.topicId = safeTopicId;
       if (material) sessionPayload.material = material;
       if (notes) sessionPayload.notes = notes;
 
@@ -184,10 +191,10 @@ export function AddStudyModal({
 
       // Agendar revisões
       if (scheduleReviews) {
-        const sub = subjects.find(s => s.subjectId === subjectId);
+        const sub = subjects.find(s => s.subjectId === safeSubjectId);
         const subName = sub?.subjectTitle ?? "Disciplina";
         const subColor = sub?.subjectColor;
-        const topicName = topics.find(t => t.id === topicId)?.title;
+        const topicName = topics.find(t => t.id === safeTopicId)?.title;
         const baseDate = new Date(selectedDate);
         const intervals = [1, 7, 15, 30];
         
@@ -197,10 +204,10 @@ export function AddStudyModal({
           await addReview({
             userId: user.uid,
             planId: activePlan.id,
-            subjectId,
+            subjectId: safeSubjectId,
             subjectName: subName,
             subjectColor: subColor,
-            topicId,
+            topicId: safeTopicId,
             topicName,
             category,
             createdDate: baseDate.toISOString(),
@@ -218,8 +225,8 @@ export function AddStudyModal({
       }
 
       // Concluir tópico
-      if (theoryCompleted && topicId) {
-        await updateTopic(topicId, { isCompleted: true });
+      if (theoryCompleted && safeTopicId) {
+        await updateTopic(safeTopicId, { isCompleted: true });
       }
 
       if (onSaved) onSaved();
@@ -352,7 +359,7 @@ export function AddStudyModal({
                   <SelectValue placeholder={loadingTopics ? "Carregando..." : "Selecione..."} />
                 </SelectTrigger>
                 <SelectContent>
-                  {topics.map(t => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
+                  {topics.map(t => <SelectItem key={t.id} value={t.id}>{t.title || (t as any).name || "Tópico sem nome"}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

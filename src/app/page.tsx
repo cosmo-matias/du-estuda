@@ -708,7 +708,13 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {recentSessions.map((session) => {
                 const subject = subjects.find((s) => s.id === session.subjectId);
-                const subjectName = activePlan.subjects?.find((s) => s.id === session.subjectId)?.name || "Disciplina Removida";
+                const subjectObj = activePlan.subjects?.find((s) => 
+                  s.id === session.subjectId || 
+                  (s as any).subjectId === session.subjectId || 
+                  (s as any).planSubjectId === session.subjectId ||
+                  s.id === (session as any).planSubjectId
+                );
+                const subjectName = subjectObj?.name || "Disciplina Removida";
                 const sessionDate = new Date(session.date).toLocaleDateString("pt-BR", {
                   day: "2-digit",
                   month: "short",
