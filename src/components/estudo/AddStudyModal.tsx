@@ -84,9 +84,15 @@ export function AddStudyModal({
       if (initialSubjectId) setSubjectId(initialSubjectId);
       if (initialCategory) setCategory(initialCategory);
       if (initialTopicId) setTopicId(initialTopicId);
-      if (initialDurationSeconds !== undefined) {
-        const m = Math.floor(initialDurationSeconds / 60);
-        setDurationStr(m.toString());
+      if (initialDurationSeconds !== undefined && initialDurationSeconds > 0) {
+        const h = Math.floor(initialDurationSeconds / 3600);
+        const m = Math.floor((initialDurationSeconds % 3600) / 60);
+        const s = initialDurationSeconds % 60;
+        if (h > 0) {
+          setDurationStr(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+        } else {
+          setDurationStr(`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`);
+        }
       }
     }
   }, [open, initialSubjectId, initialCategory, initialTopicId, initialDurationSeconds]);
