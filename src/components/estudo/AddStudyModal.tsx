@@ -201,26 +201,32 @@ export function AddStudyModal({
         for (let i = 0; i < intervals.length; i++) {
           const rDate = new Date(baseDate);
           rDate.setDate(rDate.getDate() + intervals[i]);
-          await addReview({
+          // Build metrics without undefined values (Firestore rejects undefined)
+          const reviewMetrics: Record<string, string | number> = { studyTime: durationStr };
+          if (showQuestions && qTotal) {
+            reviewMetrics.questionsCount = parseInt(qTotal, 10);
+            reviewMetrics.correctCount = parseInt(qCorrect, 10) || 0;
+            reviewMetrics.accuracy = Math.round(((parseInt(qCorrect, 10) || 0) / parseInt(qTotal, 10)) * 100);
+          }
+
+          const reviewPayload: any = {
             userId: user.uid,
             planId: activePlan.id,
             subjectId: safeSubjectId,
             subjectName: subName,
-            subjectColor: subColor,
-            topicId: safeTopicId,
-            topicName,
             category,
             createdDate: baseDate.toISOString(),
             scheduledDate: rDate.toISOString(),
             intervalDays: intervals[i],
-            status: 'scheduled',
-            metrics: {
-              studyTime: durationStr,
-              questionsCount: showQuestions && qTotal ? parseInt(qTotal, 10) : undefined,
-              correctCount: showQuestions && qCorrect ? parseInt(qCorrect, 10) : undefined,
-              accuracy: showQuestions && qTotal && qCorrect ? Math.round((parseInt(qCorrect, 10) / parseInt(qTotal, 10)) * 100) : undefined
-            }
-          });
+            status: 'scheduled' as const,
+            metrics: reviewMetrics,
+          };
+          // Only add optional fields if they have actual values
+          if (subColor) reviewPayload.subjectColor = subColor;
+          if (safeTopicId) reviewPayload.topicId = safeTopicId;
+          if (topicName) reviewPayload.topicName = topicName;
+
+          await addReview(reviewPayload);
         }
       }
 
@@ -328,10 +334,9 @@ export function AddStudyModal({
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {subjects.map(s => {
-                    const realName = activePlan?.subjects?.find(a => a.id === s.subjectId)?.name || s.subjectTitle || "Disciplina Removida";
-                    return <SelectItem key={s.subjectId} value={s.subjectId}>{realName}</SelectItem>;
-                  })}
+                  {subjects.map(s => (
+                    <SelectItem key={s.subjectId} value={s.subjectId}>{s.subjectTitle || "Disciplina Removida"}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
