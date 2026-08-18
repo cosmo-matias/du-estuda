@@ -186,7 +186,7 @@ function CronometroContent() {
         intervalRef.current = null;
       }
     };
-  }, [timerState]);
+  }, [timerState, isCountdown]);
 
   // Pause interval tracker
   useEffect(() => {
@@ -746,7 +746,13 @@ function CronometroContent() {
         initialSubjectId={selectedSubject}
         initialCategory={(selectedCategory as StudyCategory) || undefined}
         initialTopicId={selectedTopic || undefined}
-        initialDurationSeconds={isCountdown ? (parsedDuration * 60) - Math.max(0, elapsedSeconds) : elapsedSeconds}
+        initialDurationSeconds={
+          isCountdown
+            ? (parsedDuration * 60) - Math.max(0, elapsedSeconds)
+            : mode === "pomodoro"
+              ? Math.min(elapsedSeconds, pomodoroTotalSec)
+              : elapsedSeconds
+        }
         onSaved={handleAddStudyModalSaved}
       />
     </div>

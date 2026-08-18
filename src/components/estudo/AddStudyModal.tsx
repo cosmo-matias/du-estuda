@@ -337,7 +337,11 @@ export function AddStudyModal({
               <label className="text-xs font-semibold uppercase text-slate-500">Disciplina</label>
               <Select value={subjectId} onValueChange={(val) => setSubjectId(val || "")}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
+                  <span className="flex flex-1 text-left truncate">
+                    {subjectId
+                      ? (subjects.find(s => s.subjectId === subjectId)?.subjectTitle || "Selecione...")
+                      : "Selecione..."}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {subjects.map(s => (
@@ -367,7 +371,13 @@ export function AddStudyModal({
               <label className="text-xs font-semibold uppercase text-slate-500">Tópico (Opcional)</label>
               <Select value={topicId} onValueChange={(val) => setTopicId(val || "")} disabled={!subjectId || loadingTopics}>
                 <SelectTrigger>
-                  <SelectValue placeholder={loadingTopics ? "Carregando..." : "Selecione..."} />
+                  <span className="flex flex-1 text-left truncate">
+                    {loadingTopics
+                      ? "Carregando..."
+                      : topicId
+                        ? (topics.find(t => t.id === topicId)?.title || "Selecione...")
+                        : "Selecione..."}
+                  </span>
                 </SelectTrigger>
                 <SelectContent>
                   {topics.map(t => <SelectItem key={t.id} value={t.id}>{t.title || (t as any).name || "Tópico sem nome"}</SelectItem>)}
